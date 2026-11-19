@@ -1,0 +1,1 @@
+export default function LoadingTargets() { return <section className="panel animate-pulse"><div className="h-8 w-48 rounded bg-zinc-200" /><div className="mt-6 h-48 rounded bg-surface-muted" /></section>; }

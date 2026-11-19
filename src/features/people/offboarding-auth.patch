@@ -1,0 +1,70 @@
+diff --git a/src/lib/auth/identity.ts b/src/lib/auth/identity.ts
+index 12612d4..079ab1f 100644
+--- a/src/lib/auth/identity.ts
++++ b/src/lib/auth/identity.ts
+@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
+ 
+ import { db } from "@/db";
+ import {
++  peopleProfiles,
+   permissions,
+   rolePermissions,
+   roles,
+@@ -47,11 +48,13 @@ async function buildActor(user: typeof users.$inferSelect): Promise<Authorizatio
+   };
+ }
+ 
++const eligibleAccount = sql`not exists (select 1 from ${peopleProfiles} where ${peopleProfiles.userId} = ${users.id} and ${peopleProfiles.employmentStatus} = 'terminated')`;
++
+ export async function getActiveActorById(userId: string): Promise<AuthorizationActor | null> {
+   const [user] = await db
+     .select()
+     .from(users)
+-    .where(and(eq(users.id, userId), eq(users.isActive, true)))
++    .where(and(eligibleAccount, eq(users.id, userId), eq(users.isActive, true)))
+     .limit(1);
+ 
+   return user ? buildActor(user) : null;
+@@ -62,7 +65,7 @@ export async function getActiveActorByEmail(email: string): Promise<Authorizatio
+   const [user] = await db
+     .select()
+     .from(users)
+-    .where(and(eq(users.isActive, true), sql`lower(${users.email}) = ${normalizedEmail}`))
++    .where(and(eligibleAccount, eq(users.isActive, true), sql`lower(${users.email}) = ${normalizedEmail}`))
+     .limit(1);
+ 
+   return user ? buildActor(user) : null;
+diff --git a/src/lib/auth/invitations.ts b/src/lib/auth/invitations.ts
+index e04fa6a..3a8f7fa 100644
+--- a/src/lib/auth/invitations.ts
++++ b/src/lib/auth/invitations.ts
+@@ -53,6 +53,8 @@ export async function createInvitation({
+   input: CreateInvitationInput;
+   origin: string;
+ }) {
++  const [blocked] = await db.select({id: users.id}).from(users).where(and(eq(users.isActive, false), sql`lower(${users.email}) = ${normalizeEmail(input.email)}`)).limit(1);
++  if (blocked) throw new InvitationError("INVALID", "Workspace access for this account has been removed.");
+   const [role] = await db
+     .select({ id: roles.id, slug: roles.slug })
+     .from(roles)
+@@ -164,7 +166,8 @@ export async function acceptInvitation(token: string) {
+       .select()
+       .from(users)
+       .where(sql`lower(${users.email}) = ${normalizedEmail}`)
+-      .limit(1);
++      .limit(1).for("update");
++    if (existingUser && !existingUser.isActive) throw new InvitationError("INVALID", "Workspace access for this account has been removed.");
+ 
+     const user = existingUser
+       ? existingUser
+@@ -179,10 +182,6 @@ export async function acceptInvitation(token: string) {
+       throw new InvitationError("CONFIGURATION", "The invited user could not be created.");
+     }
+ 
+-    await tx
+-      .update(users)
+-      .set({ isActive: true, updatedAt: new Date() })
+-      .where(eq(users.id, user.id));
+ 
+     await tx.insert(userRoles).values({ userId: user.id, roleId: invitation.roleId }).onConflictDoNothing();
+ 

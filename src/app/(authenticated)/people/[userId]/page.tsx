@@ -1,0 +1,11 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { PeopleProfileForm } from "@/features/people/components/PeopleProfileForm";
+import { peopleService } from "@/features/people/server";
+import { can } from "@/lib/authorization/policy";
+import { PERMISSIONS } from "@/lib/authorization/permissions";
+import { requirePagePermission } from "@/lib/authorization/server";
+
+export const instant = false;
+export default async function PersonPage({ params }: { params: Promise<{ userId: string }> }) { const actor = await requirePagePermission(PERMISSIONS.PEOPLE_READ); const { userId } = await params; const person = await peopleService.get(actor, userId).catch(() => null); if (!person) notFound(); return <section><Link className="text-sm text-text-muted hover:underline" href="/people">← Back to people</Link><div className="panel mt-5"><p className="text-sm text-text-muted">People profile</p><h1 className="mt-1 text-2xl font-semibold">{person.name?.trim() || person.email.split("@")[0]}</h1>{person.name?.trim() ? null : <p className="mt-1 text-xs text-text-muted">Name not set — it is filled from their Google account at their next sign-in, or set it below.</p>}<p className="mt-2 text-sm text-text-muted">{person.email}</p><div className="mt-6 grid gap-4 text-sm md:grid-cols-2"><div><p className="text-text-muted">Job title</p><p>{person.profile.jobTitle ?? "—"}</p></div><div><p className="text-text-muted">Employment status</p><p className="capitalize">{person.profile.employmentStatus.replaceAll("_", " ")}</p></div><div><p className="text-text-muted">Manager</p><p>{person.manager?.name ?? person.manager?.email ?? "—"}</p></div><div><p className="text-text-muted">Departments</p><p>{person.departments.map((department) => department.name).join(", ") || "—"}</p></div><div><p className="text-text-muted">Roles</p><p>{person.roles.map((role) => role.name).join(", ") || "—"}</p></div></div>{can(actor, PERMISSIONS.PEOPLE_MANAGE) ? <PeopleProfileForm userId={userId} initial={{ jobTitle: person.profile.jobTitle, employmentStatus: person.profile.employmentStatus, managerUserId: person.profile.managerUserId, departmentIds: person.departments.map((department) => department.id) }} /> : null}</div></section>; }

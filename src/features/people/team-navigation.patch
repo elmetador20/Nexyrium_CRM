@@ -1,0 +1,548 @@
+--- a/src/app/(authenticated)/people/page.tsx
++++ b/src/app/(authenticated)/people/page.tsx
+@@ -1,8 +1,10 @@
+-import Link from "next/link";
+-
+-import { peopleService } from "@/features/people/server";
+-import { PERMISSIONS } from "@/lib/authorization/permissions";
+-import { requirePagePermission } from "@/lib/authorization/server";
+-
+-export const instant = false;
+-export default async function PeoplePage() { const actor = await requirePagePermission(PERMISSIONS.PEOPLE_READ); const result = await peopleService.list(actor, { page: 1, pageSize: 100 }); return <section><div className="mb-5"><p className="text-sm text-zinc-500">People directory</p><h1 className="mt-1 text-2xl font-semibold">People</h1><p className="mt-2 text-sm text-zinc-500">Directory fields only. Payroll, compensation, addresses, and other sensitive HR data are intentionally not stored here.</p></div>{result.items.length ? <div className="overflow-x-auto rounded-xl border bg-white dark:bg-zinc-950"><table className="data-table"><thead><tr><th>Name</th><th>Work email</th><th>Job title</th><th>Status</th><th>Departments</th><th>Roles</th></tr></thead><tbody>{result.items.map((person) => <tr key={person.id}><td><Link className="font-medium underline" href={`/people/${person.id}`}>{person.name ?? "Unnamed"}</Link></td><td>{person.email}</td><td>{person.profile.jobTitle ?? "—"}</td><td className="capitalize">{person.profile.employmentStatus.replaceAll("_", " ")}</td><td>{person.departments.map((department) => department.name).join(", ") || "—"}</td><td>{person.roles.map((role) => role.name).join(", ") || "—"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-zinc-500">No people records are visible in your scope.</p>}</section>; }
++import { TeamInvitations } from "@/features/people/components/TeamInvitations";
++import { can } from "@/lib/authorization/policy";
++import Link from "next/link";
++
++import { peopleService } from "@/features/people/server";
++import { PERMISSIONS } from "@/lib/authorization/permissions";
++import { requirePagePermission } from "@/lib/authorization/server";
++
++export const instant = false;
++export default async function PeoplePage() { const actor = await requirePagePermission(PERMISSIONS.PEOPLE_READ); const result = await peopleService.list(actor, { page: 1, pageSize: 100 }); return <section><div className="mb-5"><p className="text-sm text-zinc-500">People directory</p><h1 className="mt-1 text-2xl font-semibold">People</h1><p className="mt-2 text-sm text-zinc-500">Directory fields only. Payroll, compensation, addresses, and other sensitive HR data are intentionally not stored here.</p></div>{can(actor, PERMISSIONS.REPORTS_READ) && <Link className="button-secondary" href="/targets">Monthly targets</Link>}<TeamInvitations actor={actor}/>{result.items.length ? <div className="overflow-x-auto rounded-xl border bg-white dark:bg-zinc-950"><table className="data-table"><thead><tr><th>Name</th><th>Work email</th><th>Job title</th><th>Status</th><th>Departments</th><th>Roles</th></tr></thead><tbody>{result.items.map((person) => <tr key={person.id}><td><Link className="font-medium underline" href={`/people/${person.id}`}>{person.name ?? "Unnamed"}</Link></td><td>{person.email}</td><td>{person.profile.jobTitle ?? "—"}</td><td className="capitalize">{person.profile.employmentStatus.replaceAll("_", " ")}</td><td>{person.departments.map((department) => department.name).join(", ") || "—"}</td><td>{person.roles.map((role) => role.name).join(", ") || "—"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-zinc-500">No people records are visible in your scope.</p>}</section>; }
+--- a/src/components/layout/Sidebar.tsx
++++ b/src/components/layout/Sidebar.tsx
+@@ -1,262 +1,262 @@
+-"use client";
+-
+-import Link from "next/link";
+-import { usePathname } from "next/navigation";
+-import { useState, type ReactNode } from "react";
+-import { useRouter } from "next/navigation";
+-import { ChevronRight, Menu, X, LayoutDashboard, Users, Target, FileText, DollarSign, Briefcase, CheckSquare, Settings, Plug, ClipboardList, LogOut } from "lucide-react";
+-import { cn } from "@/lib/utils";
+-import { Badge, Avatar } from "@/components/ui";
+-
+-export interface NavItem {
+-  label: string;
+-  href: string;
+-  icon: ReactNode;
+-  permission?: string;
+-  badge?: string | number;
+-  children?: NavItem[];
+-}
+-
+-export interface NavSection {
+-  title: string;
+-  items: NavItem[];
+-}
+-
+-export interface SidebarProps {
+-  user: {
+-    name?: string | null;
+-    email: string;
+-    avatar?: string | null;
+-  };
+-  navigation?: NavSection[];
+-  permissions?: string[];
+-  onSignOut?: () => void;
+-  onSettings?: () => void;
+-}
+-
+-const navigationSections: NavSection[] = [
+-  {
+-    title: "Workspace",
+-    items: [
+-      { label: "Overview", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" />, permission: "reports:read" },
+-      { label: "CRM", href: "/crm", icon: <Users className="h-5 w-5" />, permission: "crm:leads:read" },
+-      { label: "Projects", href: "/projects", icon: <Briefcase className="h-5 w-5" />, permission: "projects:read" },
+-      { label: "Tasks", href: "/tasks", icon: <CheckSquare className="h-5 w-5" />, permission: "tasks:read" },
+-    ],
+-  },
+-  {
+-    title: "Business",
+-    items: [
+-      { label: "Documents", href: "/documents", icon: <FileText className="h-5 w-5" />, permission: "documents:read" },
+-      { label: "Quotations", href: "/quotations", icon: <FileText className="h-5 w-5" />, permission: "quotations:read" },
+-      { label: "Invoices", href: "/finance/invoices", icon: <DollarSign className="h-5 w-5" />, permission: "invoices:read" },
+-      { label: "Finance", href: "/finance", icon: <DollarSign className="h-5 w-5" />, permission: "finance:read" },
+-    ],
+-  },
+-  {
+-    title: "Organization",
+-    items: [
+-      { label: "People", href: "/people", icon: <Users className="h-5 w-5" />, permission: "people:read" },
+-      { label: "Targets", href: "/targets", icon: <Target className="h-5 w-5" />, permission: "targets:read" },
+-      { label: "Reports", href: "/reports", icon: <ClipboardList className="h-5 w-5" />, permission: "reports:read" },
+-    ],
+-  },
+-  {
+-    title: "Administration",
+-    items: [
+-      { label: "Integrations", href: "/settings/integrations/meta", icon: <Plug className="h-5 w-5" />, permission: "integrations:meta:read" },
+-      { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" />, permission: "settings:read" },
+-    ],
+-  },
+-];
+-
+-function hasPermission(userPermissions: string[], permission?: string): boolean {
+-  if (!permission) return true;
+-  return userPermissions.includes(permission);
+-}
+-
+-function filterNavigation(sections: NavSection[], userPermissions: string[]): NavSection[] {
+-  return sections
+-    .map((section) => ({
+-      ...section,
+-      items: section.items.filter((item) => hasPermission(userPermissions, item.permission)),
+-    }))
+-    .filter((section) => section.items.length > 0);
+-}
+-
+-export function Sidebar({ user, navigation = navigationSections, permissions = [], onSignOut, onSettings }: SidebarProps) {
+-  const pathname = usePathname();
+-  const router = useRouter();
+-  const [collapsed, setCollapsed] = useState(false);
+-  const [mobileOpen, setMobileOpen] = useState(false);
+-
+-  const filteredSections = filterNavigation(navigation, permissions);
+-
+-  const isActive = (href: string) => {
+-    if (href === "/dashboard") return pathname === "/dashboard";
+-    return pathname.startsWith(href);
+-  };
+-
+-  const handleSignOut = () => {
+-    onSignOut?.();
+-    router.push("/logout");
+-  };
+-
+-  const handleSettings = () => {
+-    onSettings?.();
+-    router.push("/settings/profile");
+-  };
+-
+-  const handleKeyDown = (event: React.KeyboardEvent, href: string) => {
+-    if (event.key === "Enter" || event.key === " ") {
+-      event.preventDefault();
+-      router.push(href);
+-    }
+-  };
+-
+-  return (
+-    <>
+-      <button
+-        className="btn btn-ghost btn-sm lg:hidden fixed top-4 left-4 z-50"
+-        onClick={() => setMobileOpen(true)}
+-        aria-label="Open navigation menu"
+-        aria-expanded={mobileOpen}
+-      >
+-        <Menu className="h-5 w-5" />
+-      </button>
+-
+-      {mobileOpen && (
+-        <div
+-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+-          onClick={() => setMobileOpen(false)}
+-          aria-hidden="true"
+-        />
+-      )}
+-
+-      <aside
+-        className={cn(
+-          "fixed inset-y-0 left-0 z-40 flex flex-col bg-surface border-r border-border transition-all duration-200 lg:translate-x-0",
+-          collapsed ? "w-16" : "w-64",
+-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+-        )}
+-        aria-label="Main navigation"
+-      >
+-        <div className="flex h-16 items-center justify-between px-4 border-b border-border">
+-          {!collapsed && (
+-            <Link href="/dashboard" className="flex items-center gap-2" aria-label="Nexyrium OS Home">
+-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+-                <span className="text-white font-bold text-lg">N</span>
+-              </div>
+-              <span className="font-semibold text-text-primary">Nexyrium OS</span>
+-            </Link>
+-          )}
+-          <button
+-            onClick={() => setCollapsed(!collapsed)}
+-            className="btn btn-ghost btn-sm p-1.5"
+-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+-            aria-expanded={!collapsed}
+-          >
+-            {collapsed ? <ChevronRight className="h-5 w-5" /> : <X className="h-5 w-5" />}
+-          </button>
+-        </div>
+-
+-        <nav className="flex-1 overflow-y-auto p-3" role="navigation" aria-label="Main">
+-          <ul className="space-y-1" role="list">
+-            {filteredSections.map((section, sectionIndex) => (
+-              <li key={sectionIndex} className="animate-in">
+-                {!collapsed && (
+-                  <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted">
+-                    {section.title}
+-                  </p>
+-                )}
+-                <ul className="space-y-0.5" role="list">
+-                  {section.items.map((item) => (
+-                    <li key={item.href}>
+-                      <Link
+-                        href={item.href}
+-                        className={cn(
+-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+-                          isActive(item.href)
+-                            ? "bg-primary-light text-primary"
+-                            : "text-text-secondary hover:bg-surface-hover hover:text-text-primary",
+-                          collapsed && "justify-center"
+-                        )}
+-                        aria-current={isActive(item.href) ? "page" : undefined}
+-                        onKeyDown={(e) => handleKeyDown(e, item.href)}
+-                        title={collapsed ? item.label : undefined}
+-                      >
+-                        <span className="flex-shrink-0" aria-hidden="true">{item.icon}</span>
+-                        {!collapsed && (
+-                          <>
+-                            <span className="flex-1 truncate">{item.label}</span>
+-                            {item.badge && <Badge variant="primary" size="sm">{item.badge}</Badge>}
+-                          </>
+-                        )}
+-                      </Link>
+-                    </li>
+-                  ))}
+-                </ul>
+-              </li>
+-            ))}
+-          </ul>
+-        </nav>
+-
+-        <div className="p-3 border-t border-border">
+-          {!collapsed ? (
+-            <div className="space-y-2">
+-              <Link
+-                href="/settings/profile"
+-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
+-                onKeyDown={(e) => handleKeyDown(e, "/settings/profile")}
+-              >
+-                <Avatar src={user.avatar} name={user.name || user.email} size="sm" />
+-                <div className="flex-1 min-w-0">
+-                  <p className="truncate font-medium text-text-primary">{user.name || "User"}</p>
+-                  <p className="truncate text-xs text-text-muted">{user.email}</p>
+-                </div>
+-              </Link>
+-              <div className="flex gap-2">
+-                <button
+-                  onClick={handleSettings}
+-                  className="btn btn-secondary btn-sm flex-1"
+-                  aria-label="Settings"
+-                >
+-                  <Settings className="h-4 w-4" />
+-                  <span>Settings</span>
+-                </button>
+-                <button
+-                  onClick={handleSignOut}
+-                  className="btn btn-ghost btn-sm text-danger hover:text-danger hover:bg-danger-light"
+-                  aria-label="Sign out"
+-                >
+-                  <LogOut className="h-4 w-4" />
+-                  <span className="hidden sm:inline">Sign out</span>
+-                </button>
+-              </div>
+-            </div>
+-          ) : (
+-            <div className="flex flex-col items-center gap-2">
+-              <Avatar src={user.avatar} name={user.name || user.email} size="md" />
+-              <div className="flex gap-1">
+-                <button
+-                  onClick={handleSettings}
+-                  className="btn btn-secondary btn-sm p-1.5"
+-                  aria-label="Settings"
+-                >
+-                  <Settings className="h-4 w-4" />
+-                </button>
+-                <button
+-                  onClick={handleSignOut}
+-                  className="btn btn-ghost btn-sm p-1.5 text-danger hover:text-danger hover:bg-danger-light"
+-                  aria-label="Sign out"
+-                >
+-                  <LogOut className="h-4 w-4" />
+-                </button>
+-              </div>
+-            </div>
+-          )}
+-        </div>
+-      </aside>
+-    </>
+-  );
+-}
++"use client";
++
++import Link from "next/link";
++import { usePathname } from "next/navigation";
++import { useState, type ReactNode } from "react";
++import { useRouter } from "next/navigation";
++import { ChevronRight, Menu, X, LayoutDashboard, Users, Target, FileText, DollarSign, Briefcase, CheckSquare, Settings, Plug, ClipboardList, LogOut } from "lucide-react";
++import { cn } from "@/lib/utils";
++import { Badge, Avatar } from "@/components/ui";
++
++export interface NavItem {
++  label: string;
++  href: string;
++  icon: ReactNode;
++  permission?: string;
++  badge?: string | number;
++  children?: NavItem[];
++}
++
++export interface NavSection {
++  title: string;
++  items: NavItem[];
++}
++
++export interface SidebarProps {
++  user: {
++    name?: string | null;
++    email: string;
++    avatar?: string | null;
++  };
++  navigation?: NavSection[];
++  permissions?: string[];
++  onSignOut?: () => void;
++  onSettings?: () => void;
++}
++
++const navigationSections: NavSection[] = [
++  {
++    title: "Workspace",
++    items: [
++      { label: "Overview", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" />, permission: "reports:read" },
++      { label: "CRM", href: "/crm", icon: <Users className="h-5 w-5" />, permission: "crm:leads:read" },
++      { label: "Projects", href: "/projects", icon: <Briefcase className="h-5 w-5" />, permission: "projects:read" },
++      { label: "Tasks", href: "/tasks", icon: <CheckSquare className="h-5 w-5" />, permission: "tasks:read" },
++    ],
++  },
++  {
++    title: "Business",
++    items: [
++      { label: "Documents", href: "/documents", icon: <FileText className="h-5 w-5" />, permission: "documents:read" },
++      { label: "Quotations", href: "/quotations", icon: <FileText className="h-5 w-5" />, permission: "quotations:read" },
++      { label: "Invoices", href: "/finance/invoices", icon: <DollarSign className="h-5 w-5" />, permission: "invoices:read" },
++      { label: "Finance", href: "/finance", icon: <DollarSign className="h-5 w-5" />, permission: "finance:read" },
++    ],
++  },
++  {
++    title: "Organization",
++    items: [
++      { label: "People", href: "/people", icon: <Users className="h-5 w-5" />, permission: "people:read" },
++      { label: "Targets", href: "/targets", icon: <Target className="h-5 w-5" />, permission: "reports:read" },
++      { label: "Reports", href: "/reports", icon: <ClipboardList className="h-5 w-5" />, permission: "reports:read" },
++    ],
++  },
++  {
++    title: "Administration",
++    items: [
++      { label: "Integrations", href: "/settings/integrations/meta", icon: <Plug className="h-5 w-5" />, permission: "integrations:meta:read" },
++      { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" />, permission: "settings:read" },
++    ],
++  },
++];
++
++function hasPermission(userPermissions: string[], permission?: string): boolean {
++  if (!permission) return true;
++  return userPermissions.includes("*") || userPermissions.includes(permission);
++}
++
++function filterNavigation(sections: NavSection[], userPermissions: string[]): NavSection[] {
++  return sections
++    .map((section) => ({
++      ...section,
++      items: section.items.filter((item) => hasPermission(userPermissions, item.permission)),
++    }))
++    .filter((section) => section.items.length > 0);
++}
++
++export function Sidebar({ user, navigation = navigationSections, permissions = [], onSignOut, onSettings }: SidebarProps) {
++  const pathname = usePathname();
++  const router = useRouter();
++  const [collapsed, setCollapsed] = useState(false);
++  const [mobileOpen, setMobileOpen] = useState(false);
++
++  const filteredSections = filterNavigation(navigation, permissions);
++
++  const isActive = (href: string) => {
++    if (href === "/dashboard") return pathname === "/dashboard";
++    return pathname.startsWith(href);
++  };
++
++  const handleSignOut = () => {
++    onSignOut?.();
++    router.push("/logout");
++  };
++
++  const handleSettings = () => {
++    onSettings?.();
++    router.push("/settings/profile");
++  };
++
++  const handleKeyDown = (event: React.KeyboardEvent, href: string) => {
++    if (event.key === "Enter" || event.key === " ") {
++      event.preventDefault();
++      router.push(href);
++    }
++  };
++
++  return (
++    <>
++      <button
++        className="btn btn-ghost btn-sm lg:hidden fixed top-4 left-4 z-50"
++        onClick={() => setMobileOpen(true)}
++        aria-label="Open navigation menu"
++        aria-expanded={mobileOpen}
++      >
++        <Menu className="h-5 w-5" />
++      </button>
++
++      {mobileOpen && (
++        <div
++          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
++          onClick={() => setMobileOpen(false)}
++          aria-hidden="true"
++        />
++      )}
++
++      <aside
++        className={cn(
++          "fixed inset-y-0 left-0 z-40 flex flex-col bg-surface border-r border-border transition-all duration-200 lg:translate-x-0",
++          collapsed ? "w-16" : "w-64",
++          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
++        )}
++        aria-label="Main navigation"
++      >
++        <div className="flex h-16 items-center justify-between px-4 border-b border-border">
++          {!collapsed && (
++            <Link href="/dashboard" className="flex items-center gap-2" aria-label="Nexyrium OS Home">
++              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
++                <span className="text-white font-bold text-lg">N</span>
++              </div>
++              <span className="font-semibold text-text-primary">Nexyrium OS</span>
++            </Link>
++          )}
++          <button
++            onClick={() => setCollapsed(!collapsed)}
++            className="btn btn-ghost btn-sm p-1.5"
++            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
++            aria-expanded={!collapsed}
++          >
++            {collapsed ? <ChevronRight className="h-5 w-5" /> : <X className="h-5 w-5" />}
++          </button>
++        </div>
++
++        <nav className="flex-1 overflow-y-auto p-3" role="navigation" aria-label="Main">
++          <ul className="space-y-1" role="list">
++            {filteredSections.map((section, sectionIndex) => (
++              <li key={sectionIndex} className="animate-in">
++                {!collapsed && (
++                  <p className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted">
++                    {section.title}
++                  </p>
++                )}
++                <ul className="space-y-0.5" role="list">
++                  {section.items.map((item) => (
++                    <li key={item.href}>
++                      <Link
++                        href={item.href}
++                        className={cn(
++                          "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
++                          isActive(item.href)
++                            ? "bg-primary-light text-primary"
++                            : "text-text-secondary hover:bg-surface-hover hover:text-text-primary",
++                          collapsed && "justify-center"
++                        )}
++                        aria-current={isActive(item.href) ? "page" : undefined}
++                        onKeyDown={(e) => handleKeyDown(e, item.href)}
++                        title={collapsed ? item.label : undefined}
++                      >
++                        <span className="flex-shrink-0" aria-hidden="true">{item.icon}</span>
++                        {!collapsed && (
++                          <>
++                            <span className="flex-1 truncate">{item.label}</span>
++                            {item.badge && <Badge variant="primary" size="sm">{item.badge}</Badge>}
++                          </>
++                        )}
++                      </Link>
++                    </li>
++                  ))}
++                </ul>
++              </li>
++            ))}
++          </ul>
++        </nav>
++
++        <div className="p-3 border-t border-border">
++          {!collapsed ? (
++            <div className="space-y-2">
++              <Link
++                href="/settings/profile"
++                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-surface-hover hover:text-text-primary transition-colors"
++                onKeyDown={(e) => handleKeyDown(e, "/settings/profile")}
++              >
++                <Avatar src={user.avatar} name={user.name || user.email} size="sm" />
++                <div className="flex-1 min-w-0">
++                  <p className="truncate font-medium text-text-primary">{user.name || "User"}</p>
++                  <p className="truncate text-xs text-text-muted">{user.email}</p>
++                </div>
++              </Link>
++              <div className="flex gap-2">
++                <button
++                  onClick={handleSettings}
++                  className="btn btn-secondary btn-sm flex-1"
++                  aria-label="Settings"
++                >
++                  <Settings className="h-4 w-4" />
++                  <span>Settings</span>
++                </button>
++                <button
++                  onClick={handleSignOut}
++                  className="btn btn-ghost btn-sm text-danger hover:text-danger hover:bg-danger-light"
++                  aria-label="Sign out"
++                >
++                  <LogOut className="h-4 w-4" />
++                  <span className="hidden sm:inline">Sign out</span>
++                </button>
++              </div>
++            </div>
++          ) : (
++            <div className="flex flex-col items-center gap-2">
++              <Avatar src={user.avatar} name={user.name || user.email} size="md" />
++              <div className="flex gap-1">
++                <button
++                  onClick={handleSettings}
++                  className="btn btn-secondary btn-sm p-1.5"
++                  aria-label="Settings"
++                >
++                  <Settings className="h-4 w-4" />
++                </button>
++                <button
++                  onClick={handleSignOut}
++                  className="btn btn-ghost btn-sm p-1.5 text-danger hover:text-danger hover:bg-danger-light"
++                  aria-label="Sign out"
++                >
++                  <LogOut className="h-4 w-4" />
++                </button>
++              </div>
++            </div>
++          )}
++        </div>
++      </aside>
++    </>
++  );
++}

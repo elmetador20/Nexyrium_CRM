@@ -1,0 +1,9 @@
+import { NextResponse } from "next/server";
+import { ZodError } from "zod";
+import { financeErrorResponse } from "@/features/finance/shared/errors";
+import { quotationService } from "@/features/finance/server";
+import { PERMISSIONS } from "@/lib/authorization/permissions";
+import { authorizationErrorResponse, requirePermission } from "@/lib/authorization/server";
+
+export async function GET(_request: Request, { params }: { params: Promise<{ quotationId: string }> }) { try { const actor = await requirePermission(PERMISSIONS.QUOTATIONS_READ); const { quotationId } = await params; return NextResponse.json(await quotationService.get(actor, quotationId)); } catch (error) { return financeErrorResponse(error) ?? authorizationErrorResponse(error); } }
+export async function POST(request: Request, { params }: { params: Promise<{ quotationId: string }> }) { try { const body = await request.json(); const requiredPermission = body.action === "revise" ? PERMISSIONS.QUOTATIONS_REVISE : body.action === "transition" && ["approved", "rejected"].includes(body.input?.status) ? PERMISSIONS.QUOTATIONS_APPROVE : PERMISSIONS.QUOTATIONS_UPDATE; const actor = await requirePermission(requiredPermission); const { quotationId } = await params; if (body.action === "transition") return NextResponse.json(await quotationService.transition(actor, quotationId, body.input, request.headers.get("x-correlation-id") ?? undefined)); if (body.action === "revise") return NextResponse.json(await quotationService.revise(actor, quotationId, body.input, request.headers.get("x-correlation-id") ?? undefined)); return NextResponse.json({ error: "Use transition or revise action.", code: "INVALID_INPUT" }, { status: 400 }); } catch (error) { if (error instanceof ZodError) return NextResponse.json({ error: "Invalid quotation input.", code: "INVALID_INPUT" }, { status: 400 }); return financeErrorResponse(error) ?? authorizationErrorResponse(error); } }

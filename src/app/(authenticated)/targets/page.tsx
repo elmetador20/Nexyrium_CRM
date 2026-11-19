@@ -1,0 +1,8 @@
+import { TargetForm } from "@/features/targets/components/TargetForm";
+import { targetService } from "@/features/targets/server";
+import { PERMISSIONS } from "@/lib/authorization/permissions";
+import { can } from "@/lib/authorization/policy";
+import { requirePagePermission } from "@/lib/authorization/server";
+
+export const instant = false;
+export default async function TargetsPage() { const actor = await requirePagePermission(PERMISSIONS.REPORTS_READ); const targets = await targetService.list(actor, {}); return <section className="space-y-6"><div><p className="text-sm text-text-muted">Configurable departmental goals</p><h1 className="mt-1 text-2xl font-semibold">Targets</h1><p className="mt-2 text-sm text-text-muted">Targets are goals, not actual revenue. Actuals are calculated in reports from authorized records.</p></div>{targets.length ? <div className="overflow-x-auto rounded-xl border bg-surface"><table className="data-table"><thead><tr><th>Department ID</th><th>Metric</th><th>Period</th><th>Target</th><th>Currency</th></tr></thead><tbody>{targets.map((target) => <tr key={target.id}><td>{target.departmentId}</td><td>{target.metricKey}</td><td>{target.periodStart} – {target.periodEnd}</td><td>{target.targetMinor ?? target.targetCount}</td><td>{target.currencyCode ?? "count"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-text-muted">No targets are configured for the selected scope.</p>}{can(actor, PERMISSIONS.REPORTS_MANAGE) ? <div className="panel"><h2 className="text-lg font-semibold">Add target</h2><p className="mt-1 text-sm text-text-muted">Use one complete calendar month. Amounts use integer minor units.</p><div className="mt-5"><TargetForm /></div></div> : null}</section>; }

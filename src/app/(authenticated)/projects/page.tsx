@@ -1,0 +1,21 @@
+import Link from "next/link";
+
+import { getProjectService } from "@/features/projects/server";
+import { PERMISSIONS } from "@/lib/authorization/permissions";
+import { requirePagePermission } from "@/lib/authorization/server";
+import { label, resolveLabels } from "@/lib/labels";
+
+export const instant = false;
+
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const actor = await requirePagePermission(PERMISSIONS.PROJECTS_READ);
+  const params = await searchParams;
+  const search = typeof params.search === "string" ? params.search : undefined;
+  const status = typeof params.status === "string" ? params.status : undefined;
+  const page = typeof params.page === "string" ? params.page : "1";
+  const result = await getProjectService().list(actor, { search, status, page, pageSize: 20 });
+  const labels = await resolveLabels({ users: result.items.map((project) => project.ownerId) });
+  return <section><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-text-muted">Delivery work</p><h2 className="mt-1 text-2xl font-semibold">Projects</h2><p className="mt-1 text-sm text-text-muted">{result.total} accessible projects</p></div><div className="flex gap-2"><Link href="/tasks" className="button-secondary">Task board</Link><Link href="/projects/new" className="button-primary">New project</Link></div></div><form className="mb-5 grid gap-3 rounded-xl border border-border bg-surface p-4 md:grid-cols-[1fr_180px_auto]"><input className="input mt-0" name="search" defaultValue={search} placeholder="Search projects" /><select className="input mt-0" name="status" defaultValue={status ?? ""}><option value="">All statuses</option><option value="planned">Planned</option><option value="active">Active</option><option value="on_hold">On hold</option><option value="completed">Completed</option><option value="canceled">Canceled</option></select><button className="button-secondary" type="submit">Filter</button></form>{result.items.length === 0 ? <div className="rounded-xl border border-dashed border-border-strong p-12 text-center text-sm text-text-muted">No projects found.</div> : <div className="overflow-hidden rounded-xl border border-border bg-surface"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-border text-xs uppercase text-text-muted"><tr><th className="px-4 py-3">Project</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3">Due</th></tr></thead><tbody>{result.items.map((project) => <tr key={project.id} className="border-b border-border last:border-0"><td className="px-4 py-4"><Link className="font-medium hover:underline" href={`/projects/${project.id}`}>{project.name}</Link><p className="mt-1 max-w-md truncate text-xs text-text-muted">{project.description ?? "No description"}</p></td><td className="px-4 py-4 capitalize">{project.status.replace("_", " ")}</td><td className="px-4 py-4 text-text-secondary">{label(labels.users, project.ownerId)}</td><td className="px-4 py-4 text-text-secondary">{project.dueDate ?? "—"}</td></tr>)}</tbody></table></div><Pagination page={Number(page)} total={result.total} search={search} status={status} /></div>}</section>;
+}
+
+function Pagination({ page, total, search, status }: { page: number; total: number; search?: string; status?: string }) { const pages = Math.ceil(total / 20); if (pages <= 1) return null; const link = (value: number) => { const params = new URLSearchParams({ page: String(value) }); if (search) params.set("search", search); if (status) params.set("status", status); return `/projects?${params}`; }; return <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm"><span>Page {page} of {pages}</span><div className="flex gap-2">{page > 1 ? <Link className="button-secondary" href={link(page - 1)}>Previous</Link> : null}{page < pages ? <Link className="button-secondary" href={link(page + 1)}>Next</Link> : null}</div></div>; }

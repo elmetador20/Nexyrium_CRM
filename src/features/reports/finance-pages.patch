@@ -1,0 +1,451 @@
+diff --git a/src/app/(authenticated)/dashboard/page.tsx b/src/app/(authenticated)/dashboard/page.tsx
+--- a/src/app/(authenticated)/dashboard/page.tsx
++++ b/src/app/(authenticated)/dashboard/page.tsx
+@@ -1,305 +1,4 @@
+-import { DashboardReportView } from "@/features/reports/components/DashboardReportView";
+-import { reportsService } from "@/features/reports/server";
+-import { PERMISSIONS } from "@/lib/authorization/permissions";
+-import { requirePagePermission } from "@/lib/authorization/server";
+-import { KPICard } from "@/components/dashboard/KPICard";
+-import {
+-  RevenueTrendChart,
+-  LeadSourceChart,
+-  PipelineChart,
+-  TargetVsActualChart,
+-  InvoiceStatusChart,
+-  ProjectStatusChart,
+-} from "@/components/dashboard/Charts";
+-import { Users, Briefcase, DollarSign, TrendingUp, Target, FolderOpen, Clock, AlertTriangle } from "lucide-react";
+-import Link from "next/link";
+-import { Button } from "@/components/ui";
+-
+-export const instant = false;
+-
+-function formatCurrency(amount: number | string | undefined, currency = "INR"): string {
+-  if (amount === undefined || amount === null) return "—";
+-  const num = typeof amount === "string" ? parseInt(amount, 10) : amount;
+-  if (isNaN(num)) return "—";
+-  return new Intl.NumberFormat("en-IN", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num / 100);
+-}
+-
+-function formatNumber(num: number | undefined): string {
+-  if (num === undefined || num === null) return "—";
+-  return new Intl.NumberFormat("en-IN").format(num);
+-}
+-
+-function formatPercentage(value: number | undefined): string {
+-  if (value === undefined || value === null) return "—";
+-  return `${value.toFixed(1)}%`;
+-}
+-
+-export default async function DashboardPage({
+-  searchParams,
+-}: {
+-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+-}) {
+-  const actor = await requirePagePermission(PERMISSIONS.REPORTS_READ);
+-  const filters = await searchParams;
+-  let data;
+-  let errorMessage: string | null = null;
+-  try {
+-    data = await reportsService.dashboard(actor, filters);
+-  } catch (error) {
+-    errorMessage = error instanceof Error ? error.message : "The dashboard could not be loaded.";
+-  }
+-
+-  if (errorMessage && !data) {
+-    return (
+-      <section className="card">
+-        <div className="card-body text-center py-12">
+-          <h1 className="text-2xl font-semibold text-text-primary">Dashboard unavailable</h1>
+-          <p className="mt-2 text-sm text-text-secondary">{errorMessage}</p>
+-        </div>
+-      </section>
+-    );
+-  }
+-
+-  const periodFrom = data?.filters?.periodFrom || "";
+-  const periodTo = data?.filters?.periodTo || "";
+-
+-  const kpiCards = [
+-    {
+-      label: "Total Leads",
+-      value: formatNumber(data?.leads?.createdLeads),
+-      subtitle: data?.leads?.available ? `Created in period` : "No access",
+-      trend: data?.leads?.convertedInPeriod && data?.leads?.createdLeads
+-        ? { value: (data.leads.convertedInPeriod / data.leads.createdLeads) * 100, label: "Conversion rate", positive: true }
+-        : undefined,
+-      icon: <Users className="h-6 w-6" />,
+-      iconBg: "bg-primary-light",
+-      iconColor: "text-primary",
+-    },
+-    {
+-      label: "Active Deals",
+-      value: formatNumber(data?.deals?.openDealCount),
+-      subtitle: data?.deals?.available ? "Currently in pipeline" : "No access",
+-      icon: <Briefcase className="h-6 w-6" />,
+-      iconBg: "bg-success-light",
+-      iconColor: "text-success",
+-    },
+-    {
+-      label: "Pipeline Value",
+-      value: data?.deals?.pipelineByStage?.reduce((sum, s) => sum + (typeof s.total === "string" ? parseInt(s.total) : 0), 0)
+-        ? formatCurrency(data.deals.pipelineByStage.reduce((sum, s) => sum + (typeof s.total === "string" ? parseInt(s.total) : 0), 0))
+-        : "—",
+-      subtitle: data?.deals?.available ? "Across all stages" : "No access",
+-      icon: <DollarSign className="h-6 w-6" />,
+-      iconBg: "bg-warning-light",
+-      iconColor: "text-warning",
+-    },
+-    {
+-      label: "Active Projects",
+-      value: formatNumber(
+-        data?.delivery?.projectStatus
+-          ? Object.entries(data.delivery.projectStatus)
+-              .filter(([k]) => k !== "completed" && k !== "cancelled")
+-              .reduce((sum, [, v]) => sum + v, 0)
+-          : undefined
+-      ),
+-      subtitle: data?.delivery?.available ? "In progress" : "No access",
+-      icon: <FolderOpen className="h-6 w-6" />,
+-      iconBg: "bg-blue-100",
+-      iconColor: "text-blue-600",
+-    },
+-    {
+-      label: "Outstanding Receivables",
+-      value: data?.finance?.overdueReceivables?.reduce((sum, r) => sum + parseInt(r.outstandingMinor), 0)
+-        ? formatCurrency(data.finance.overdueReceivables.reduce((sum, r) => sum + parseInt(r.outstandingMinor), 0))
+-        : "—",
+-      subtitle: data?.finance?.available ? "Overdue invoices" : "No access",
+-      trend: data?.finance?.overdueReceivables && data?.finance?.overdueReceivables.length > 0
+-        ? { value: 12, label: "vs last month", positive: false }
+-        : undefined,
+-      icon: <AlertTriangle className="h-6 w-6" />,
+-      iconBg: "bg-danger-light",
+-      iconColor: "text-danger",
+-    },
+-    {
+-      label: "Revenue Collected",
+-      value: data?.finance?.paymentsReceived?.reduce((sum, p) => sum + parseInt(p.totalMinor), 0)
+-        ? formatCurrency(data.finance.paymentsReceived.reduce((sum, p) => sum + parseInt(p.totalMinor), 0))
+-        : "—",
+-      subtitle: data?.finance?.available ? "In period" : "No access",
+-      icon: <TrendingUp className="h-6 w-6" />,
+-      iconBg: "bg-emerald-100",
+-      iconColor: "text-emerald-600",
+-    },
+-  ];
+-
+-  const leadSourceData = data?.leads?.sourcePerformance?.map((s) => ({
+-    source: s.source,
+-    count: s.createdLeads,
+-    percentage: s.createdLeads / (data.leads?.createdLeads || 1),
+-  })) || [];
+-
+-  const pipelineData = data?.deals?.pipelineByStage?.map((s) => ({
+-    stage: s.stage.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+-    value: typeof s.total === "string" ? parseInt(s.total) : 0,
+-    count: s.count,
+-  })) || [];
+-
+-  const targetData = data?.targets?.items?.reduce((acc: Record<string, { target: number; actual: number }>, item) => {
+-    const dept = item.departmentName;
+-    if (!acc[dept]) acc[dept] = { target: 0, actual: 0 };
+-    if (item.targetMinor) acc[dept].target += parseInt(item.targetMinor);
+-    if (item.actualMinor) acc[dept].actual += parseInt(item.actualMinor);
+-    return acc;
+-  }, {}) || {};
+-
+-  const targetChartData = Object.entries(targetData).map(([department, values]) => ({
+-    department,
+-    target: values.target,
+-    actual: values.actual,
+-  }));
+-
+-  const invoiceStatusData = [
+-    ...(data?.finance?.receivables?.map((r) => ({ status: `${r.currency} Outstanding`, count: 1, amount: parseInt(r.outstandingMinor) })) || []),
+-    ...(data?.finance?.overdueReceivables?.map((r) => ({ status: `${r.currency} Overdue`, count: 1, amount: parseInt(r.outstandingMinor) })) || []),
+-  ];
+-
+-  const projectStatusData = data?.delivery?.projectStatus
+-    ? Object.entries(data.delivery.projectStatus).map(([status, count]) => ({
+-        status: status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+-        count,
+-      }))
+-    : [];
+-
+-  const recentLeads = []; // Would come from a separate query
+-  const upcomingTasks = []; // Would come from a separate query
+-
+-  return (
+-    <div className="space-y-6 animate-in">
+-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+-        <div>
+-          <p className="text-sm text-text-secondary">
+-            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+-          </p>
+-          <h1 className="mt-1 text-3xl font-semibold text-text-primary">Dashboard</h1>
+-          <p className="mt-2 text-sm text-text-secondary max-w-2xl">
+-            Current-status snapshots and event-window metrics calculated from authorized database records.
+-          </p>
+-        </div>
+-        <div className="flex flex-wrap gap-2">
+-          <Link href="/crm/leads/new">
+-            <Button icon={<Plus className="h-4 w-4" />}>New Lead</Button>
+-          </Link>
+-          <Link href="/projects/new">
+-            <Button variant="secondary" icon={<Plus className="h-4 w-4" />}>New Project</Button>
+-          </Link>
+-        </div>
+-      </div>
+-
+-      <form className="card p-4 flex flex-wrap gap-4" action="/dashboard">
+-        <div className="flex items-end gap-4 flex-1">
+-          <label className="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+-            <span className="text-sm font-medium text-text-secondary">Period from</span>
+-            <input
+-              name="periodFrom"
+-              type="date"
+-              defaultValue={periodFrom}
+-              className="input"
+-            />
+-          </label>
+-          <label className="flex flex-col gap-1.5 flex-1 min-w-[180px]">
+-            <span className="text-sm font-medium text-text-secondary">Period to</span>
+-            <input
+-              name="periodTo"
+-              type="date"
+-              defaultValue={periodTo}
+-              className="input"
+-            />
+-          </label>
+-          <Button type="submit" className="h-10">Apply filters</Button>
+-        </div>
+-      </form>
+-
+-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+-        {kpiCards.map((kpi, index) => (
+-          <KPICard key={index} {...kpi} />
+-        ))}
+-      </div>
+-
+-      <div className="grid gap-6 lg:grid-cols-2">
+-        <RevenueTrendChart data={[]} />
+-        <LeadSourceChart data={leadSourceData} />
+-      </div>
+-
+-      <div className="grid gap-6 lg:grid-cols-2">
+-        <PipelineChart data={pipelineData} />
+-        <TargetVsActualChart data={targetChartData} />
+-      </div>
+-
+-      <div className="grid gap-6 lg:grid-cols-2">
+-        <InvoiceStatusChart data={invoiceStatusData} />
+-        <ProjectStatusChart data={projectStatusData} />
+-      </div>
+-
+-      <div className="grid gap-6 lg:grid-cols-2">
+-        <section className="card">
+-          <div className="card-body">
+-            <div className="flex items-center justify-between mb-4">
+-              <h3 className="text-lg font-semibold text-text-primary">Recent Leads</h3>
+-              <Link href="/crm/leads" className="text-sm text-primary hover:underline">View all</Link>
+-            </div>
+-            <div className="text-text-secondary text-sm text-center py-8">
+-              {data?.leads?.available ? "Lead list integration pending" : "No access to leads data"}
+-            </div>
+-          </div>
+-        </section>
+-
+-        <section className="card">
+-          <div className="card-body">
+-            <div className="flex items-center justify-between mb-4">
+-              <h3 className="text-lg font-semibold text-text-primary">Upcoming Tasks</h3>
+-              <Link href="/tasks" className="text-sm text-primary hover:underline">View all</Link>
+-            </div>
+-            <div className="text-text-secondary text-sm text-center py-8">
+-              {data?.delivery?.available ? "Task list integration pending" : "No access to tasks data"}
+-            </div>
+-          </div>
+-        </section>
+-      </div>
+-
+-      <div className="grid gap-6 lg:grid-cols-3">
+-        <section className="card lg:col-span-2">
+-          <div className="card-body">
+-            <div className="flex items-center justify-between mb-4">
+-              <h3 className="text-lg font-semibold text-text-primary">Recent Project Activity</h3>
+-              <Link href="/projects" className="text-sm text-primary hover:underline">View all</Link>
+-            </div>
+-            <div className="text-text-secondary text-sm text-center py-8">
+-              {data?.delivery?.available ? "Project activity integration pending" : "No access to projects data"}
+-            </div>
+-          </div>
+-        </section>
+-
+-        <section className="card">
+-          <div className="card-body">
+-            <div className="flex items-center justify-between mb-4">
+-              <h3 className="text-lg font-semibold text-text-primary">Latest Invoices</h3>
+-              <Link href="/finance/invoices" className="text-sm text-primary hover:underline">View all</Link>
+-            </div>
+-            <div className="text-text-secondary text-sm text-center py-8">
+-              {data?.finance?.available ? "Invoice list integration pending" : "No access to finance data"}
+-            </div>
+-          </div>
+-        </section>
+-      </div>
+-    </div>
+-  );
+-}
+-
+-function Plus({ className, ...props }: { className?: string } & React.SVGProps<SVGSVGElement>) {
+-  return (
+-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 ${className}`} {...props}>
+-      <line x1="12" x2="12" y1="5" y2="19" />
+-      <line x1="5" x2="19" y1="12" y2="12" />
+-    </svg>
+-  );
+-}
+\ No newline at end of file
++import { OverviewPage } from "@/features/reports/components/OverviewPage";
++
++export const instant = false;
++export default OverviewPage;
+diff --git a/src/app/(authenticated)/finance/page.tsx b/src/app/(authenticated)/finance/page.tsx
+--- a/src/app/(authenticated)/finance/page.tsx
++++ b/src/app/(authenticated)/finance/page.tsx
+@@ -1,53 +1,59 @@
+-import Link from "next/link";
+-
+-import { invoiceService } from "@/features/finance/server";
+-import { formatMoney, subtractMinor } from "@/features/finance/shared/money";
+-import { can } from "@/lib/authorization/policy";
+-import { PERMISSIONS } from "@/lib/authorization/permissions";
+-import { requirePageActor } from "@/lib/authorization/server";
+-
+-export const instant = false;
+-
+-export default async function FinancePage() {
+-  const actor = await requirePageActor();
+-  if (!can(actor, PERMISSIONS.FINANCE_READ) && !can(actor, PERMISSIONS.INVOICES_READ)) {
+-    return <section className="card p-8"><h1 className="text-xl font-semibold text-text-primary">Finance is unavailable</h1><p className="mt-2 text-sm text-text-secondary">You do not have permission to view finance records.</p></section>;
+-  }
+-
+-  const result = await invoiceService.list(actor, { page: 1, pageSize: 100 });
+-  const today = new Date().toISOString().slice(0, 10);
+-  const byCurrency = new Map<string, { invoiced: string; collected: string; outstanding: string; overdue: string; drafts: string }>();
+-
+-  for (const invoice of result.items) {
+-    const current = byCurrency.get(invoice.currencyCode) ?? { invoiced: "0", collected: "0", outstanding: "0", overdue: "0", drafts: "0" };
+-    const paid = invoice.paidMinor ?? "0";
+-    if (invoice.status === "draft") current.drafts = add(current.drafts, invoice.totalMinor);
+-    if (invoice.status !== "draft" && invoice.status !== "voided") {
+-      current.invoiced = add(current.invoiced, invoice.totalMinor);
+-      current.collected = add(current.collected, paid);
+-      const balance = subtractMinor(invoice.totalMinor, paid);
+-      current.outstanding = add(current.outstanding, balance);
+-      if (invoice.status === "overdue" || (invoice.dueDate && invoice.dueDate < today && balance !== "0")) current.overdue = add(current.overdue, balance);
+-    }
+-    byCurrency.set(invoice.currencyCode, current);
+-  }
+-
+-  return (
+-    <section>
+-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+-        <div><p className="text-sm font-medium text-text-muted">Financial overview</p><h1 className="mt-1 text-2xl font-semibold text-text-primary">Finance</h1><p className="mt-1 text-sm text-text-secondary">Amounts are grouped by currency and calculated from persisted invoices and payment allocations.</p></div>
+-        <Link className="button-primary" href="/finance/invoices/new">New invoice</Link>
+-      </div>
+-      {byCurrency.size === 0 ? <div className="card border-dashed p-10 text-center"><h2 className="font-semibold text-text-primary">No financial activity yet</h2><p className="mt-2 text-sm text-text-secondary">Create an invoice to begin tracking receivables.</p></div> : <div className="space-y-4">{[...byCurrency.entries()].map(([currency, values]) => <div className="card p-5" key={currency}><h2 className="font-semibold text-text-primary">{currency}</h2><dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Invoiced" value={formatMoney(values.invoiced, currency)} /><Metric label="Collected" value={formatMoney(values.collected, currency)} /><Metric label="Outstanding" value={formatMoney(values.outstanding, currency)} /><Metric label="Overdue" value={formatMoney(values.overdue, currency)} /><Metric label="Drafts" value={formatMoney(values.drafts, currency)} /></dl></div>)}</div>}
+-      <div className="mt-8"><Link className="text-sm font-medium text-primary hover:underline" href="/finance/invoices">View all invoices →</Link></div>
+-    </section>
+-  );
+-}
+-
+-function add(left: string, right: string) {
+-  return (BigInt(left) + BigInt(right)).toString();
+-}
+-
+-function Metric({ label, value }: { label: string; value: string }) {
+-  return <div className="rounded-lg bg-surface-hover p-4"><dt className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</dt><dd className="mt-2 text-lg font-semibold text-text-primary">{value}</dd></div>;
+-}
++import { reportsService } from "@/features/reports/server";
++import { DashboardReportView } from "@/features/reports/components/DashboardReportView";
++import Link from "next/link";
++
++import { invoiceService } from "@/features/finance/server";
++import { formatMoney, subtractMinor } from "@/features/finance/shared/money";
++import { can } from "@/lib/authorization/policy";
++import { PERMISSIONS } from "@/lib/authorization/permissions";
++import { requirePageActor } from "@/lib/authorization/server";
++
++export const instant = false;
++
++export default async function FinancePage({ searchParams }: { searchParams: Promise<Record<string,string|string[]|undefined>> }) {
++  const actor = await requirePageActor();
++  if (!can(actor, PERMISSIONS.FINANCE_READ) && !can(actor, PERMISSIONS.INVOICES_READ)) {
++    return <section className="card p-8"><h1 className="text-xl font-semibold text-text-primary">Finance is unavailable</h1><p className="mt-2 text-sm text-text-secondary">You do not have permission to view finance records.</p></section>;
++  }
++
++  if (can(actor, PERMISSIONS.REPORTS_READ)) {
++    const data = await reportsService.dashboard(actor, await searchParams);
++    return <DashboardReportView data={data} action="/finance"/>;
++  }
++  const result = await invoiceService.list(actor, { page: 1, pageSize: 100 });
++  const today = new Date().toISOString().slice(0, 10);
++  const byCurrency = new Map<string, { invoiced: string; collected: string; outstanding: string; overdue: string; drafts: string }>();
++
++  for (const invoice of result.items) {
++    const current = byCurrency.get(invoice.currencyCode) ?? { invoiced: "0", collected: "0", outstanding: "0", overdue: "0", drafts: "0" };
++    const paid = invoice.paidMinor ?? "0";
++    if (invoice.status === "draft") current.drafts = add(current.drafts, invoice.totalMinor);
++    if (invoice.status !== "draft" && invoice.status !== "voided") {
++      current.invoiced = add(current.invoiced, invoice.totalMinor);
++      current.collected = add(current.collected, paid);
++      const balance = subtractMinor(invoice.totalMinor, paid);
++      current.outstanding = add(current.outstanding, balance);
++      if (invoice.status === "overdue" || (invoice.dueDate && invoice.dueDate < today && balance !== "0")) current.overdue = add(current.overdue, balance);
++    }
++    byCurrency.set(invoice.currencyCode, current);
++  }
++
++  return (
++    <section>
++      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
++        <div><p className="text-sm font-medium text-text-muted">Financial overview</p><h1 className="mt-1 text-2xl font-semibold text-text-primary">Finance</h1><p className="mt-1 text-sm text-text-secondary">Amounts are grouped by currency and calculated from persisted invoices and payment allocations.</p></div>
++        <Link className="button-primary" href="/finance/invoices/new">New invoice</Link>
++      </div>
++      {byCurrency.size === 0 ? <div className="card border-dashed p-10 text-center"><h2 className="font-semibold text-text-primary">No financial activity yet</h2><p className="mt-2 text-sm text-text-secondary">Create an invoice to begin tracking receivables.</p></div> : <div className="space-y-4">{[...byCurrency.entries()].map(([currency, values]) => <div className="card p-5" key={currency}><h2 className="font-semibold text-text-primary">{currency}</h2><dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-5"><Metric label="Invoiced" value={formatMoney(values.invoiced, currency)} /><Metric label="Collected" value={formatMoney(values.collected, currency)} /><Metric label="Outstanding" value={formatMoney(values.outstanding, currency)} /><Metric label="Overdue" value={formatMoney(values.overdue, currency)} /><Metric label="Drafts" value={formatMoney(values.drafts, currency)} /></dl></div>)}</div>}
++      <div className="mt-8"><Link className="text-sm font-medium text-primary hover:underline" href="/finance/invoices">View all invoices →</Link></div>
++    </section>
++  );
++}
++
++function add(left: string, right: string) {
++  return (BigInt(left) + BigInt(right)).toString();
++}
++
++function Metric({ label, value }: { label: string; value: string }) {
++  return <div className="rounded-lg bg-surface-hover p-4"><dt className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</dt><dd className="mt-2 text-lg font-semibold text-text-primary">{value}</dd></div>;
++}
+diff --git a/src/app/(authenticated)/targets/page.tsx b/src/app/(authenticated)/targets/page.tsx
+--- a/src/app/(authenticated)/targets/page.tsx
++++ b/src/app/(authenticated)/targets/page.tsx
+@@ -1,8 +1,9 @@
+-import { TargetForm } from "@/features/targets/components/TargetForm";
+-import { targetService } from "@/features/targets/server";
+-import { PERMISSIONS } from "@/lib/authorization/permissions";
+-import { can } from "@/lib/authorization/policy";
+-import { requirePagePermission } from "@/lib/authorization/server";
+-
+-export const instant = false;
+-export default async function TargetsPage() { const actor = await requirePagePermission(PERMISSIONS.REPORTS_READ); const targets = await targetService.list(actor, {}); return <section className="space-y-6"><div><p className="text-sm text-zinc-500">Configurable departmental goals</p><h1 className="mt-1 text-2xl font-semibold">Targets</h1><p className="mt-2 text-sm text-zinc-500">Targets are goals, not actual revenue. Actuals are calculated in reports from authorized records.</p></div>{targets.length ? <div className="overflow-x-auto rounded-xl border bg-white dark:bg-zinc-950"><table className="data-table"><thead><tr><th>Department ID</th><th>Metric</th><th>Period</th><th>Target</th><th>Currency</th></tr></thead><tbody>{targets.map((target) => <tr key={target.id}><td>{target.departmentId}</td><td>{target.metricKey}</td><td>{target.periodStart} – {target.periodEnd}</td><td>{target.targetMinor ?? target.targetCount}</td><td>{target.currencyCode ?? "count"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-zinc-500">No targets are configured for the selected scope.</p>}{can(actor, PERMISSIONS.REPORTS_MANAGE) ? <div className="panel"><h2 className="text-lg font-semibold">Add target</h2><p className="mt-1 text-sm text-zinc-500">Use one complete calendar month. Amounts use integer minor units.</p><div className="mt-5"><TargetForm /></div></div> : null}</section>; }
++import { formatMoney } from "@/features/finance/shared/money";
++import { TargetForm } from "@/features/targets/components/TargetForm";
++import { targetService } from "@/features/targets/server";
++import { PERMISSIONS } from "@/lib/authorization/permissions";
++import { can } from "@/lib/authorization/policy";
++import { requirePagePermission } from "@/lib/authorization/server";
++
++export const instant = false;
++export default async function TargetsPage() { const actor = await requirePagePermission(PERMISSIONS.REPORTS_READ); const targets = await targetService.list(actor, {}); return <section className="space-y-6"><div><p className="text-sm text-zinc-500">Configurable departmental goals</p><h1 className="mt-1 text-2xl font-semibold">Targets</h1><p className="mt-2 text-sm text-zinc-500">Targets are goals, not actual revenue. Actuals are calculated in reports from authorized records.</p></div>{targets.length ? <div className="overflow-x-auto rounded-xl border bg-white dark:bg-zinc-950"><table className="data-table"><thead><tr><th>Department</th><th>Metric</th><th>Period</th><th>Target</th><th>Currency</th></tr></thead><tbody>{targets.map((target) => <tr key={target.id}><td>{target.departmentName}</td><td>{target.metricKey}</td><td>{target.periodStart} – {target.periodEnd}</td><td>{(target.currencyCode && target.targetMinor != null ? formatMoney(target.targetMinor,target.currencyCode) : target.targetCount)}</td><td>{target.currencyCode ?? "count"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-zinc-500">No targets are configured for the selected scope.</p>}{can(actor, PERMISSIONS.REPORTS_MANAGE) ? <div className="panel"><h2 className="text-lg font-semibold">Add target</h2><p className="mt-1 text-sm text-zinc-500">Choose the month, department, and target amount.</p><div className="mt-5"><TargetForm /></div></div> : null}</section>; }

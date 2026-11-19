@@ -3,24 +3,49 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "db:check": "drizzle-kit check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node scripts/run-db-command.mjs migrate",
+    "db:seed": "tsx scripts/seed-authorization.ts",
+    "db:seed:targets": "tsx scripts/seed-module10-targets.ts",
+    "db:verify": "node scripts/verify-db.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "16.4.2",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
+    "googleapis": "^186.0.0",
+    "lucide-react": "^1.61.0",
+    "next": "16.4.6",
+    "next-auth": "^5.0.0-beta.32",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.23.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "recharts": "^3.10.1",
+    "server-only": "^0.0.1",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^18.0.8",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

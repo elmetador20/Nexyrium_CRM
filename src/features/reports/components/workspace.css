@@ -1,0 +1,2 @@
+/* Brand tokens now live in src/app/globals.css. This file is kept so existing
+ * imports keep resolving; it intentionally adds no overrides. */
