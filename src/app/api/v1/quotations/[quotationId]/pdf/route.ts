@@ -1,7 +1,8 @@
 import { ZodError } from "zod";
 
 import { quotationService } from "@/features/finance/server";
-import { renderFinancialPdf } from "@/features/finance/documents/pdf";
+import type { FinancialPdfInput } from "@/features/finance/documents/pdf";
+import { StorageError } from "@/lib/storage";
 import { financeErrorResponse, financeValidationResponse } from "@/features/finance/shared/errors";
 import { quotationIdSchema } from "@/features/quotations/schemas";
 import { PERMISSIONS } from "@/lib/authorization/permissions";
@@ -26,7 +27,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ qu
     const actor = await requirePermission(PERMISSIONS.FINANCIAL_DOCUMENTS_DOWNLOAD);
     const validQuotationId = quotationIdSchema.parse(quotationId);
     const result = await quotationService.get(actor, validQuotationId);
-    const rendered = await renderFinancialPdf({
+    const data: FinancialPdfInput = {
+      recordId: quotationId,
       documentType: "quotation",
       number: result.quotation.quotationNumber,
       title: result.quotation.title,
@@ -50,7 +52,20 @@ export async function POST(_request: Request, { params }: { params: Promise<{ qu
         lineTaxMinor: line.lineTaxMinor,
         lineTotalMinor: line.lineTotalMinor,
       })),
-    });
+    };
+    const artifacts = await import("@/features/finance/documents/artifact-service");
+    if (new URL(_request.url).searchParams.get("destination") === "drive") {
+      await requirePermission(PERMISSIONS.QUOTATIONS_UPDATE);
+      const { financeStorage } = await import("@/features/finance/server");
+      try {
+        await artifacts.generateFinancialPdf({ actorUserId: actor.userId, quotationId, data, storage: financeStorage() });
+      } catch (error) {
+        if (error instanceof StorageError) return Response.json({ error: error.message, stage: "upload" }, { status: error.status });
+        throw error;
+      }
+      return Response.json({ saved: true });
+    }
+    const rendered = await artifacts.generateDownload(data);
     return new Response(new Uint8Array(rendered.body), {
       status: 200,
       headers: {

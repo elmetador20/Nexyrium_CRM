@@ -74,3 +74,10 @@ describe("premium financial PDF renderer", () => {
     expect(lineItemPages.every((stream) => stream.includes("4c6f6e6720"))).toBe(true);
   });
 });
+
+it.each(["invoice", "quotation"] as const)("keeps the %s retry checksum stable and distinguishes different records", async documentType => {
+  const input = invoiceInput({ documentType, recordId: "record-a" });
+  const first = await renderFinancialPdf(input);
+  expect((await renderFinancialPdf(input)).checksum).toBe(first.checksum);
+  expect((await renderFinancialPdf({ ...input, recordId: "record-b" })).checksum).not.toBe(first.checksum);
+});

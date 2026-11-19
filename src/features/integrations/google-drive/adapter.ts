@@ -51,10 +51,12 @@ function metadataFromFile(file: drive_v3.Schema$File, parentId: string | null): 
   };
 }
 
-export type GoogleDriveContext = { drive: drive_v3.Drive; folderId: string; sharedDriveId?: string };
+type DestinationRequest = Pick<StorageUploadInput, "category" | "operationKey">;
+
+export type GoogleDriveContext = { drive: drive_v3.Drive; folderId?: string; sharedDriveId?: string; reservation?: { fileId: string; complete: () => PromiseLike<unknown> } };
 
 type AdapterInput =
-  | { resolve: () => Promise<GoogleDriveContext>; onAuthFailure?: () => Promise<void> }
+  | { resolve: (file?: DestinationRequest) => Promise<GoogleDriveContext>; onAuthFailure?: () => Promise<void> }
   | { config: { folderId: string; sharedDriveId?: string }; drive: drive_v3.Drive };
 
 /**
@@ -63,7 +65,7 @@ type AdapterInput =
  * credentials. `onAuthFailure` lets the connection layer record a revoked or expired grant.
  */
 export function createGoogleDriveStorageAdapter(input: AdapterInput): StorageAdapter {
-  const resolve = "resolve" in input ? input.resolve : async () => ({ drive: input.drive, folderId: input.config.folderId, sharedDriveId: input.config.sharedDriveId });
+  const resolve: (file?: DestinationRequest) => Promise<GoogleDriveContext> = "resolve" in input ? input.resolve : async () => ({ drive: input.drive, folderId: input.config.folderId, sharedDriveId: input.config.sharedDriveId });
   const onAuthFailure = "resolve" in input ? input.onAuthFailure : undefined;
 
   async function fail(error: unknown, operation: "upload" | "download" | "delete" | "metadata"): Promise<never> {
@@ -76,17 +78,49 @@ export function createGoogleDriveStorageAdapter(input: AdapterInput): StorageAda
 
   return {
     provider: "google_drive",
+    async verifyDestination(category, objectId, md5) {
+      try {
+        const { drive, folderId } = await resolve({ category });
+        if (!folderId) throw new StorageError("ACCESS_DENIED", "Choose the destination folder first.", 503);
+        const file = await drive.files.get({
+          fileId: objectId, fields: "id,trashed,parents,md5Checksum,capabilities(canDownload)", supportsAllDrives: true,
+        }).catch(error => {
+          const status = error?.response?.status;
+          const reasons = error?.response?.data?.error?.errors;
+          const deniedForFile = status === 403 && Array.isArray(reasons)
+            && reasons.some(reason => reason?.reason === "insufficientFilePermissions");
+          if (status === 404 || deniedForFile) return null;
+          throw error;
+        });
+        return Boolean(file && file.data.id === objectId && !file.data.trashed && file.data.parents?.includes(folderId)
+          && file.data.md5Checksum === md5 && file.data.capabilities?.canDownload === true);
+      } catch (error) {
+        return fail(error, "metadata");
+      }
+    },
     async upload(file: StorageUploadInput) {
       try {
-        const { drive, folderId, sharedDriveId } = await resolve();
+        if ("resolve" in input && file.category && !file.operationKey) throw new StorageError("UPLOAD_FAILED", "An upload operation key is required.");
+        const { drive, folderId, reservation } = await resolve(file);
+        if (!folderId) throw new StorageError("ACCESS_DENIED", "Choose a destination folder first.", 503);
         const response = await drive.files.create({
-          requestBody: { name: file.filename, mimeType: file.mimeType, parents: [folderId] },
+          requestBody: { id: reservation?.fileId, name: file.filename, mimeType: file.mimeType, parents: [folderId] },
           media: { mimeType: file.mimeType, body: Readable.from(file.body) },
           uploadType: "resumable",
           // Drive API v3 has no "etag" file field; requesting it makes Google reject the upload (HTTP 400).
           fields: FILE_FIELDS,
-          supportsAllDrives: Boolean(sharedDriveId),
+          supportsAllDrives: true,
+        }).catch(async error => {
+          // Google may have accepted a previous create even if the response was lost.
+          if (!reservation || error?.response?.status !== 409) throw error;
+          const existing = await drive.files.get({ fileId: reservation.fileId, fields: FILE_FIELDS + ",trashed", supportsAllDrives: true });
+          const md5 = createHash("md5").update(file.body).digest("hex");
+          if (existing.data.trashed || !existing.data.parents?.includes(folderId) || existing.data.md5Checksum !== md5) {
+            throw new StorageError("UPLOAD_FAILED", "The reserved Drive file could not be verified.");
+          }
+          return existing;
         }) as unknown as { data: drive_v3.Schema$File };
+        await reservation?.complete();
         return metadataFromFile(response.data, folderId);
       } catch (error) {
         return fail(error, "upload");
@@ -94,8 +128,8 @@ export function createGoogleDriveStorageAdapter(input: AdapterInput): StorageAda
     },
     async getMetadata(objectId: string) {
       try {
-        const { drive, sharedDriveId } = await resolve();
-        const response = await drive.files.get({ fileId: objectId, fields: FILE_FIELDS, supportsAllDrives: Boolean(sharedDriveId) });
+        const { drive } = await resolve();
+        const response = await drive.files.get({ fileId: objectId, fields: FILE_FIELDS, supportsAllDrives: true });
         return metadataFromFile(response.data, response.data.parents?.[0] ?? null);
       } catch (error) {
         return fail(error, "metadata");
@@ -104,8 +138,8 @@ export function createGoogleDriveStorageAdapter(input: AdapterInput): StorageAda
     async download(objectId: string): Promise<StorageDownload> {
       try {
         const metadata = await this.getMetadata(objectId);
-        const { drive, sharedDriveId } = await resolve();
-        const response = await drive.files.get({ fileId: objectId, alt: "media", supportsAllDrives: Boolean(sharedDriveId) }, { responseType: "arraybuffer" });
+        const { drive } = await resolve();
+        const response = await drive.files.get({ fileId: objectId, alt: "media", supportsAllDrives: true }, { responseType: "arraybuffer" });
         return { mimeType: metadata.mimeType, filename: metadata.filename, sizeBytes: metadata.sizeBytes, body: toBuffer(response.data) };
       } catch (error) {
         return fail(error, "download");
@@ -113,8 +147,8 @@ export function createGoogleDriveStorageAdapter(input: AdapterInput): StorageAda
     },
     async delete(objectId: string) {
       try {
-        const { drive, sharedDriveId } = await resolve();
-        await drive.files.delete({ fileId: objectId, supportsAllDrives: Boolean(sharedDriveId) });
+        const { drive } = await resolve();
+        await drive.files.delete({ fileId: objectId, supportsAllDrives: true });
       } catch (error) {
         return fail(error, "delete");
       }

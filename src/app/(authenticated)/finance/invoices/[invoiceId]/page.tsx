@@ -35,7 +35,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <p className="mt-2 text-sm text-text-secondary">Client: {result.client?.name ?? "—"}{result.client?.companyName ? ` · ${result.client.companyName}` : ""}</p>
             <p className="mt-1 text-sm text-text-secondary">Status: <span className="font-medium capitalize">{result.invoice.status.replaceAll("_", " ")}</span></p>
           </div>
-          <FinancialDetailActions kind="invoice" id={invoiceId} status={result.invoice.status} />
+          <FinancialDetailActions canSave={can(actor, PERMISSIONS.INVOICES_UPDATE) && can(actor, PERMISSIONS.FINANCIAL_DOCUMENTS_DOWNLOAD)} kind="invoice" id={invoiceId} status={result.invoice.status} />
         </div>
 
         <div className="mt-8 overflow-x-auto">

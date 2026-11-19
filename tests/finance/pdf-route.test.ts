@@ -1,13 +1,18 @@
+vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }), insert: () => ({ values: () => ({ onConflictDoNothing: () => ({ returning: async () => [{ id: "artifact" }] }) }) }) } }));
 import { describe, expect, it, vi } from "vitest";
 import { AuthorizationError } from "@/lib/authorization/errors";
 
 const mocks = vi.hoisted(() => ({
   getInvoice: vi.fn(),
+  getQuotation: vi.fn(),
+  upload: vi.fn(),
   requirePermission: vi.fn(),
 }));
 
 vi.mock("@/features/finance/server", () => ({
   invoiceService: { get: mocks.getInvoice },
+  quotationService: { get: mocks.getQuotation },
+  financeStorage: () => ({ upload: mocks.upload, verifyDestination: async () => true }),
 }));
 
 vi.mock("@/lib/authorization/server", () => ({
@@ -93,5 +98,33 @@ describe("invoice PDF route", () => {
 
     expect(response.status).toBe(403);
     expect(mocks.getInvoice).not.toHaveBeenCalled();
+  });
+});
+
+describe("explicit financial Drive save", () => {
+  it.each(["issued", "paid"])("saves an %s invoice", async status => {
+    const result = invoiceResult();
+    result.invoice.status = status;
+    mocks.requirePermission.mockResolvedValue(actor);
+    mocks.getInvoice.mockResolvedValue(result);
+    mocks.upload.mockResolvedValue({ provider: "google_drive", objectId: "reserved" });
+    const { POST } = await import("@/app/api/v1/invoices/[invoiceId]/pdf/route");
+    const response = await POST(new Request("http://localhost/pdf?destination=drive"), { params: Promise.resolve({ invoiceId: result.invoice.id }) });
+    expect(await response.json()).toEqual({ saved: true });
+    expect(mocks.upload).toHaveBeenCalledWith(expect.objectContaining({ category: "invoice" }));
+  });
+  it("downloads and independently saves a quotation PDF", async () => {
+    const result = invoiceResult();
+    mocks.getQuotation.mockResolvedValue({ quotation: { ...result.invoice, quotationNumber: "QT-1" }, lines: result.lines });
+    mocks.requirePermission.mockResolvedValue(actor);
+    mocks.upload.mockClear().mockResolvedValue({ provider: "google_drive", objectId: "reserved" });
+    const { POST } = await import("@/app/api/v1/quotations/[quotationId]/pdf/route");
+    const params = Promise.resolve({ quotationId: result.invoice.id });
+    const download = await POST(new Request("http://localhost/pdf"), { params });
+    expect(download.headers.get("content-type")).toBe("application/pdf");
+    expect(mocks.upload).not.toHaveBeenCalled();
+    const saved = await POST(new Request("http://localhost/pdf?destination=drive"), { params });
+    expect(await saved.json()).toEqual({ saved: true });
+    expect(mocks.upload).toHaveBeenCalledWith(expect.objectContaining({ category: "quotation" }));
   });
 });

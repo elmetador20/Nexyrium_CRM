@@ -16,6 +16,14 @@ export async function GET() {
   try {
     await requirePermission(PERMISSIONS.SETTINGS_MANAGE);
     const env = getGoogleDriveEnv();
+    // Safe diagnostics: presence/length only. Never log the key, project number value or tokens.
+    console.info("[google-picker] server config", {
+      apiKeyPresent: Boolean(env.GOOGLE_PICKER_API_KEY),
+      apiKeyLength: env.GOOGLE_PICKER_API_KEY?.length ?? 0,
+      projectNumberPresent: Boolean(env.GOOGLE_CLOUD_PROJECT_NUMBER),
+      projectNumberDigits: env.GOOGLE_CLOUD_PROJECT_NUMBER?.length ?? 0,
+      projectNumberMatchesOAuthClient: Boolean(env.GOOGLE_CLOUD_PROJECT_NUMBER) && process.env.AUTH_GOOGLE_ID?.split("-")[0] === env.GOOGLE_CLOUD_PROJECT_NUMBER,
+    });
     if (!env.GOOGLE_PICKER_API_KEY || !env.GOOGLE_CLOUD_PROJECT_NUMBER) {
       return NextResponse.json({ error: "Google Picker is not configured (GOOGLE_PICKER_API_KEY and GOOGLE_CLOUD_PROJECT_NUMBER are required).", code: "PICKER_NOT_CONFIGURED" }, { status: 503, headers: noStore });
     }

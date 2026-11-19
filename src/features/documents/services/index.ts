@@ -1,3 +1,4 @@
+import { attachmentId } from "@/features/integrations/google-drive/attachment-id";
 import { createHash } from "node:crypto";
 import { getCrmScope } from "@/features/crm/shared/types";
 import { can, canAccessRecord, type AuthorizationActor } from "@/lib/authorization/policy";
@@ -61,8 +62,9 @@ function safeTitle(title: string, filename: string): string {
 
 function mapStorageError(error: unknown): DocumentError {
   if (!(error instanceof StorageError)) return new DocumentError("STORAGE_FAILED", "The document storage operation failed.");
-  if (error.code === "CONFIGURATION_MISSING") return new DocumentError("STORAGE_CONFIGURATION_MISSING", "Google Drive storage is not configured.");
+  if (error.code === "CONFIGURATION_MISSING") return new DocumentError("STORAGE_CONFIGURATION_MISSING", error.message);
   if (error.code === "AUTHENTICATION_FAILED") return new DocumentError("STORAGE_AUTHENTICATION_FAILED", "Google Drive authorization failed or was revoked.");
+  if (error.code === "ACCESS_DENIED" && error.status === 503) return new DocumentError("STORAGE_ACCESS_DENIED", error.message);
   if (error.code === "ACCESS_DENIED") return new DocumentError("STORAGE_ACCESS_DENIED", "Google Drive denied access to the private document folder.");
   if (error.code === "QUOTA_EXCEEDED") return new DocumentError("STORAGE_QUOTA_EXCEEDED", "Google Drive quota is unavailable; try again later.");
   return new DocumentError("STORAGE_FAILED", "The document storage operation failed.");
@@ -136,7 +138,9 @@ export function createDocumentService({ repository, storageFactory, limits, audi
       const title = safeTitle(metadata.title, filename);
       const body = Buffer.from(await file.arrayBuffer());
       const checksum = createHash("sha256").update(body).digest("hex");
+      const id = attachmentId("document", metadata.recordType, metadata.recordId, filename, title, metadata.category ?? "", checksum);
       const document = await repository.createPending({
+        id,
         title,
         originalFilename: filename,
         mimeType: file.type,
@@ -149,11 +153,13 @@ export function createDocumentService({ repository, storageFactory, limits, audi
         createdByUserId: actor.userId,
         updatedByUserId: actor.userId,
       });
+      if (document.status === "archived") throw new DocumentError("CONFLICT", "This attachment has been archived.");
+      if (document.status === "available") return toDocumentResponse((await getAuthorized(actor, document.id)).document);
       await repository.linkRecord({ documentId: document.id, recordType: metadata.recordType, recordId: metadata.recordId });
       let uploaded: Awaited<ReturnType<StorageAdapter["upload"]>> | null = null;
       try {
         const storage = storageFactory();
-        uploaded = await storage.upload({ filename, mimeType: file.type, body });
+        uploaded = await storage.upload({ category: "document", operationKey: id, filename, mimeType: file.type, body });
         await repository.createStorage({
           documentId: document.id,
           provider: uploaded.provider,
@@ -171,9 +177,6 @@ export function createDocumentService({ repository, storageFactory, limits, audi
         await audit({ actorUserId: actor.userId, action: "document.upload", resourceType: "document", resourceId: document.id, outcome: "success", correlationId, metadata: { recordType: metadata.recordType, recordId: metadata.recordId, mimeType: file.type, sizeBytes: body.byteLength } });
         return toDocumentResponse(available);
       } catch (error) {
-        if (uploaded) {
-          try { await storageFactory().delete(uploaded.objectId); } catch { /* best effort cleanup */ }
-        }
         const storageError = error instanceof StorageError ? error : null;
         await repository.markFailed(document.id, { failureCode: storageError?.code ?? "UPLOAD_FAILED", failureMessage: storageError?.message ?? "Document upload failed.", updatedByUserId: actor.userId });
         await audit({ actorUserId: actor.userId, action: "document.upload", resourceType: "document", resourceId: document.id, outcome: "failure", correlationId, metadata: { code: storageError?.code ?? "UPLOAD_FAILED", recordType: metadata.recordType } });

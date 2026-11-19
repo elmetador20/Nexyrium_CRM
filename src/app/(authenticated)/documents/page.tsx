@@ -15,7 +15,7 @@ export default async function DocumentsPage() {
   const canUpload = can(actor, PERMISSIONS.DOCUMENTS_CREATE);
   const [result, readiness, recordOptions] = await Promise.all([
     getDocumentService().list(actor, { page: 1, pageSize: 100 }),
-    getDriveReadiness(),
+    getDriveReadiness("document"),
     canUpload ? getDocumentRecordOptions(actor) : Promise.resolve([]),
   ]);
   return (

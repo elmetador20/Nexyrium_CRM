@@ -34,8 +34,8 @@ describe("receipt file validation", () => {
 const getExpense = vi.fn();
 const writes: string[] = [];
 function chain(kind: string) {
-  const row = [{ id: "doc-1", status: "available" }];
-  const thenable = { returning: async () => row, then: (resolve: (value: unknown) => void) => resolve(undefined) };
+  const row = [{ id: "doc-1", status: kind === "insert" ? "pending" : "available" }];
+  const thenable = { onConflictDoNothing: () => thenable, onConflictDoUpdate: () => thenable, returning: async () => row, then: (resolve: (value: unknown) => void) => resolve(undefined) };
   return {
     values: () => { writes.push(kind); return thenable; },
     set: () => ({ where: () => { writes.push(kind); return thenable; } }),

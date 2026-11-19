@@ -1,3 +1,4 @@
+import { can } from "@/lib/authorization/policy";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -21,7 +22,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
       <div className="card mt-5 p-6">
         <div className="flex flex-wrap justify-between gap-4">
           <div><p className="text-sm font-medium text-text-muted">{result.quotation.quotationNumber ?? "Draft quotation"}</p><h1 className="mt-1 text-2xl font-semibold text-text-primary">{result.quotation.title}</h1><p className="mt-2 text-sm text-text-secondary">Status: <span className="capitalize">{result.quotation.status}</span></p></div>
-          <FinancialDetailActions kind="quotation" id={quotationId} status={result.quotation.status} />
+          <FinancialDetailActions canSave={can(actor, PERMISSIONS.QUOTATIONS_UPDATE) && can(actor, PERMISSIONS.FINANCIAL_DOCUMENTS_DOWNLOAD)} kind="quotation" id={quotationId} status={result.quotation.status} />
         </div>
         <div className="mt-8 overflow-x-auto"><table className="table"><thead><tr><th>Description</th><th>Quantity</th><th>Unit price</th><th>Total</th></tr></thead><tbody>{result.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{line.quantity}</td><td>{formatMoney(line.unitPriceMinor, result.quotation.currencyCode)}</td><td className="font-medium">{formatMoney(line.lineTotalMinor, result.quotation.currencyCode)}</td></tr>)}</tbody></table></div>
         <p className="mt-6 text-right text-lg font-semibold text-text-primary">Total: {formatMoney(result.quotation.totalMinor, result.quotation.currencyCode)}</p>

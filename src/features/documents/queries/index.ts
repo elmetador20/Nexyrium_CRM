@@ -96,13 +96,13 @@ export const documentRepository: DocumentRepository = {
   },
 
   async createPending(input) {
-    const [document] = await db.insert(documents).values(input).returning();
+    const [document] = await db.insert(documents).values(input).onConflictDoUpdate({ target: documents.id, set: { id: input.id } }).returning();
     if (!document) throw new Error("Document insert did not return a record");
     return document;
   },
 
   async createStorage(input) {
-    const [storage] = await db.insert(documentStorageObjects).values(input).returning();
+    const [storage] = await db.insert(documentStorageObjects).values(input).onConflictDoUpdate({ target: [documentStorageObjects.documentId, documentStorageObjects.provider], set: { documentId: input.documentId } }).returning();
     if (!storage) throw new Error("Document storage metadata insert did not return a record");
     return storage;
   },
@@ -126,7 +126,7 @@ export const documentRepository: DocumentRepository = {
   },
 
   async markFailed(documentId, input) {
-    await db.update(documents).set({ status: "failed", failureCode: input.failureCode, failureMessage: input.failureMessage, updatedByUserId: input.updatedByUserId, updatedAt: new Date() }).where(eq(documents.id, documentId));
+    await db.update(documents).set({ status: "failed", failureCode: input.failureCode, failureMessage: input.failureMessage, updatedByUserId: input.updatedByUserId, updatedAt: new Date() }).where(and(eq(documents.id, documentId), eq(documents.status, "pending")));
   },
 
   async update(id, input, scope) {

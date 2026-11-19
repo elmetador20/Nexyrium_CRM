@@ -1,7 +1,8 @@
 import { ZodError } from "zod";
 
 import { invoiceService } from "@/features/finance/server";
-import { renderFinancialPdf } from "@/features/finance/documents/pdf";
+import type { FinancialPdfInput } from "@/features/finance/documents/pdf";
+import { StorageError } from "@/lib/storage";
 import { financeErrorResponse, financeValidationResponse } from "@/features/finance/shared/errors";
 import { invoiceIdSchema } from "@/features/invoices/schemas";
 import { PERMISSIONS } from "@/lib/authorization/permissions";
@@ -38,7 +39,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ in
     const validInvoiceId = invoiceIdSchema.parse(invoiceId);
     const result = await invoiceService.get(actor, validInvoiceId);
     const amountPaidMinor = paidMinor(result.allocations);
-    const rendered = await renderFinancialPdf({
+    const data: FinancialPdfInput = {
+      recordId: invoiceId,
       documentType: "invoice",
       number: result.invoice.invoiceNumber,
       title: result.invoice.title,
@@ -65,8 +67,20 @@ export async function POST(_request: Request, { params }: { params: Promise<{ in
         lineTaxMinor: line.lineTaxMinor,
         lineTotalMinor: line.lineTotalMinor,
       })),
-    });
-
+    };
+    const artifacts = await import("@/features/finance/documents/artifact-service");
+    if (new URL(_request.url).searchParams.get("destination") === "drive") {
+      await requirePermission(PERMISSIONS.INVOICES_UPDATE);
+      const { financeStorage } = await import("@/features/finance/server");
+      try {
+        await artifacts.generateFinancialPdf({ actorUserId: actor.userId, invoiceId, data, storage: financeStorage() });
+      } catch (error) {
+        if (error instanceof StorageError) return Response.json({ error: error.message, stage: "upload" }, { status: error.status });
+        throw error;
+      }
+      return Response.json({ saved: true });
+    }
+    const rendered = await artifacts.generateDownload(data);
     return new Response(new Uint8Array(rendered.body), {
       status: 200,
       headers: {

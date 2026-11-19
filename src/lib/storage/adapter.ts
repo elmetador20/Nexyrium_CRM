@@ -1,6 +1,8 @@
 export type StorageProvider = "google_drive";
 
 export type StorageUploadInput = {
+  category?: import("@/features/integrations/google-drive/categories").DriveCategory;
+  operationKey?: string;
   filename: string;
   mimeType: string;
   body: Buffer;
@@ -28,6 +30,7 @@ export type StorageDownload = {
 
 export type StorageAdapter = {
   provider: StorageProvider;
+  verifyDestination?(category: "invoice" | "quotation", objectId: string, md5: string): Promise<boolean>;
   upload(input: StorageUploadInput): Promise<StorageObject>;
   getMetadata(objectId: string): Promise<StorageObject>;
   download(objectId: string): Promise<StorageDownload>;

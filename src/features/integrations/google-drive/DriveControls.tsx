@@ -50,7 +50,9 @@ function Notice({ state }: { state: DriveActionState }) {
   );
 }
 
-export function DriveControls({ connected, folderReady, configuredFolderId, pickerConfigured }: { connected: boolean; folderReady: boolean; configuredFolderId: string | null; pickerConfigured: boolean }) {
+import { driveCategories, categoryLabel, type DriveCategory } from "./categories";
+
+export function DriveControls({ connectionId, mappings, connected, folderReady, configuredFolderId, pickerConfigured }: { connectionId?: string; mappings: Partial<Record<DriveCategory, string>>; connected: boolean; folderReady: boolean; configuredFolderId: string | null; pickerConfigured: boolean }) {
   const router = useRouter();
   const [state, setState] = useState<DriveActionState>({ status: "idle" });
   const [busy, setBusy] = useState<null | "connect" | "verify" | "picker" | "disconnect">(null);
@@ -66,25 +68,27 @@ export function DriveControls({ connected, folderReady, configuredFolderId, pick
     });
   }
 
-  async function openPicker(): Promise<DriveActionState> {
+  async function openPicker(category?: DriveCategory): Promise<DriveActionState> {
     const response = await fetch("/api/v1/integrations/google-drive/picker-token", { cache: "no-store" });
     const body = await response.json().catch(() => null) as { accessToken?: string; apiKey?: string; appId?: string; error?: string } | null;
+    // Safe diagnostics: presence/length only. Never log the key, token or project number.
+    console.info("[google-picker] client config", { status: response.status, apiKeyPresent: Boolean(body?.apiKey), apiKeyLength: body?.apiKey?.length ?? 0, accessTokenPresent: Boolean(body?.accessToken), appIdDigits: body?.appId?.length ?? 0, origin: window.location.origin });
     if (!response.ok || !body?.accessToken || !body.apiKey || !body.appId) return { status: "error", message: body?.error ?? "Google Picker could not be opened." };
     const picker = await loadPicker();
     const view = new picker.DocsView(picker.ViewId.FOLDERS);
     view.setIncludeFolders(true);
     view.setSelectFolderEnabled(true);
     view.setMimeTypes("application/vnd.google-apps.folder");
-    if (configuredFolderId && typeof view.setFileIds === "function") view.setFileIds(configuredFolderId);
+    if (!category && configuredFolderId && typeof view.setFileIds === "function") view.setFileIds(configuredFolderId);
     const picked = await new Promise<PickerResponse>((resolve) => {
       new picker.PickerBuilder().addView(view).setOAuthToken(body.accessToken!).setDeveloperKey(body.apiKey!).setAppId(body.appId!)
-        .setTitle("Select the Nexyrium OS Receipts folder")
+        .setTitle(category ? "Select the " + categoryLabel[category] + " folder" : "Select the Nexyrium OS Receipts folder")
         .setCallback((data) => { if (data.action === picker.Action.PICKED || data.action === picker.Action.CANCEL) resolve(data); })
         .build().setVisible(true);
     });
     const folder = picked.action === picker.Action.PICKED ? picked.docs?.[0] : undefined;
     if (!folder) return { status: "idle" };
-    return savePickedFolder(folder.id);
+    return savePickedFolder(folder.id, category, connectionId);
   }
 
   const spinner = <Loader2 className="h-4 w-4 animate-spin" aria-hidden />;
@@ -101,7 +105,7 @@ export function DriveControls({ connected, folderReady, configuredFolderId, pick
             <button type="button" className="button-secondary inline-flex items-center gap-1.5 px-3 py-2 text-sm" disabled={busy !== null} onClick={() => run("verify", verifyConfiguredFolder)}>
               {busy === "verify" ? spinner : <CheckCircle2 className="h-4 w-4" aria-hidden />}Check configured folder
             </button>
-            <button type="button" className={folderReady ? "button-secondary inline-flex items-center gap-1.5 px-3 py-2 text-sm" : "button-primary inline-flex items-center gap-1.5 px-3 py-2 text-sm"} disabled={busy !== null || !pickerConfigured} title={pickerConfigured ? undefined : "Set GOOGLE_PICKER_API_KEY and GOOGLE_CLOUD_PROJECT_NUMBER first"} onClick={() => run("picker", openPicker)}>
+            <button type="button" className={folderReady ? "button-secondary inline-flex items-center gap-1.5 px-3 py-2 text-sm" : "button-primary inline-flex items-center gap-1.5 px-3 py-2 text-sm"} disabled={busy !== null || !pickerConfigured} title={pickerConfigured ? undefined : "Set GOOGLE_PICKER_API_KEY and GOOGLE_CLOUD_PROJECT_NUMBER first"} onClick={() => run("picker", () => openPicker())}>
               {busy === "picker" ? spinner : <FolderSearch className="h-4 w-4" aria-hidden />}Choose folder in Google Drive
             </button>
             <button type="button" className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-danger hover:bg-danger-light" disabled={busy !== null}
@@ -111,6 +115,12 @@ export function DriveControls({ connected, folderReady, configuredFolderId, pick
           </>
         ) : null}
       </div>
+      {connected && folderReady && <ul className="mt-4 divide-y">
+        {driveCategories.map(category => <li className="flex items-center justify-between gap-4 py-2" key={category}>
+          <span>{categoryLabel[category]} ? {mappings[category] ?? "Unconfigured"}</span>
+          <button type="button" className="button-secondary" disabled={busy !== null || !pickerConfigured} onClick={() => run("picker", () => openPicker(category))}>{mappings[category] ? "Change folder" : "Choose folder"}</button>
+        </li>)}
+      </ul>}
       {state.status === "needs_picker" && !pickerConfigured ? <Notice state={{ status: "error", message: `${state.message} The picker needs GOOGLE_PICKER_API_KEY and GOOGLE_CLOUD_PROJECT_NUMBER in the server environment.` }} /> : <Notice state={state} />}
     </div>
   );

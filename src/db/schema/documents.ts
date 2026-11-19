@@ -156,3 +156,27 @@ export const googleDriveConnections = pgTable(
     index("google_drive_connections_connected_by_idx").on(table.connectedByUserId),
   ],
 );
+
+// Column names are explicit, like every other table: drizzle-kit generates snake_case (casing option in
+// drizzle.config.ts) but the runtime client in src/db/index.ts has no casing option, so unnamed columns would be
+// queried in camelCase ("connectionId") and fail against the migrated snake_case columns.
+export const driveCategory = pgEnum("google_drive_category", ["expense", "invoice", "document", "quotation"]);
+
+export const driveFolderMappings = pgTable("google_drive_folder_mappings", {
+  connectionId: uuid("connection_id").notNull().references(() => googleDriveConnections.id, { onDelete: "restrict" }),
+  category: driveCategory("category").notNull(),
+  folderId: varchar("folder_id", { length: 255 }).notNull(),
+  folderName: text("folder_name").notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }).defaultNow().notNull(),
+  configuredBy: uuid("configured_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+}, t => [primaryKey({ columns: [t.connectionId, t.category] }), uniqueIndex("drive_folder_per_connection").on(t.connectionId, t.folderId)]);
+
+export const driveUploads = pgTable("google_drive_upload_operations", {
+  connectionId: uuid("connection_id").notNull().references(() => googleDriveConnections.id, { onDelete: "restrict" }),
+  category: driveCategory("category").notNull(),
+  operationKey: varchar("operation_key", { length: 64 }).notNull(),
+  folderId: varchar("folder_id", { length: 255 }).notNull(),
+  fileId: varchar("file_id", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
+}, t => [primaryKey({ columns: [t.connectionId, t.category, t.operationKey] }), uniqueIndex("drive_reserved_file").on(t.fileId)]);

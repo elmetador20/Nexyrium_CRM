@@ -27,6 +27,7 @@ export type FinancialPdfLine = {
 };
 
 export type FinancialPdfInput = {
+  recordId?: string;
   documentType: "quotation" | "invoice";
   number: string | null;
   title: string;
@@ -373,6 +374,8 @@ export async function renderFinancialPdf(input: FinancialPdfInput) {
     bufferPages: true,
     compress: false,
     info: {
+      ...(input.recordId ? { Keywords: input.recordId } : {}),
+      CreationDate: input.issueDate ? new Date(input.issueDate) : new Date(0),
       Title: `${input.documentType === "invoice" ? "Invoice" : "Quotation"} ${input.number ?? "Draft"}`,
       Author: "Nexyrium",
       Subject: `${input.title} | ${safeText(input.client?.name, "Client unavailable")} | ${input.currencyCode.toUpperCase()} | total ${input.totalMinor} minor units`,

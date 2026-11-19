@@ -4,7 +4,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { google, type drive_v3 } from "googleapis";
 
 import { db } from "@/db";
-import { googleDriveConnections } from "@/db/schema";
+import { categoryLabel, type DriveCategory } from "./categories";
+import { reserveUpload } from "./upload-operations";
+import { driveFolderMappings, googleDriveConnections } from "@/db/schema";
 import { decryptToken, encryptToken } from "@/lib/crypto/token-cipher";
 import { getGoogleDriveEnv } from "@/lib/env";
 import { StorageError } from "@/lib/storage";
@@ -65,21 +67,32 @@ export async function getConnectionSummary(): Promise<DriveConnectionSummary | n
 export async function saveConnectionFromOAuth(input: { userId: string; email: string; subject: string | null; refreshToken: string; scopes: string }) {
   const encrypted = encryptToken(input.refreshToken, TOKEN_PURPOSE, encryptionKey());
   return db.transaction(async (tx) => {
-    const [previous] = await tx.select().from(googleDriveConnections).where(eq(googleDriveConnections.status, "active")).limit(1);
+    const [active] = await tx.select().from(googleDriveConnections).where(eq(googleDriveConnections.status, "active")).limit(1);
+    const [priorIdentity] = await tx.select().from(googleDriveConnections).where(input.subject
+      ? eq(googleDriveConnections.googleSubject, input.subject)
+      : eq(googleDriveConnections.googleAccountEmail, input.email.toLowerCase())).orderBy(desc(googleDriveConnections.createdAt)).limit(1);
+    if (active && priorIdentity && active.id !== priorIdentity.id) {
+      await tx.update(googleDriveConnections).set({ status: "revoked", revokedAt: new Date(), lastErrorCode: "REPLACED" }).where(eq(googleDriveConnections.id, active.id));
+    }
+    const previous = priorIdentity ?? active;
+    if (previous && (previous.googleSubject && input.subject ? previous.googleSubject === input.subject : previous.googleAccountEmail.toLowerCase() === input.email.toLowerCase())) {
+      await tx.update(googleDriveConnections).set({ status: "active", revokedAt: null, connectedByUserId: input.userId, googleSubject: input.subject, encryptedRefreshToken: encrypted, scopes: input.scopes, lastErrorCode: null, updatedAt: new Date() }).where(eq(googleDriveConnections.id, previous.id));
+      clients.delete(previous.id);
+      return { id: previous.id };
+    }
     if (previous) {
       await tx.update(googleDriveConnections).set({ status: "revoked", revokedAt: new Date(), lastErrorCode: "REPLACED", updatedAt: new Date() }).where(eq(googleDriveConnections.id, previous.id));
     }
-    // A reconnect of the same Google account keeps the authorized folder (drive.file grants persist per app).
-    const keepFolder = previous && previous.googleAccountEmail.toLowerCase() === input.email.toLowerCase();
+    // A different Google identity must choose its own parent and category folders.
     const [created] = await tx.insert(googleDriveConnections).values({
       connectedByUserId: input.userId,
       googleAccountEmail: input.email,
       googleSubject: input.subject,
       encryptedRefreshToken: encrypted,
       scopes: input.scopes,
-      folderId: keepFolder ? previous.folderId : null,
-      folderName: keepFolder ? previous.folderName : null,
-      folderVerifiedAt: keepFolder ? previous.folderVerifiedAt : null,
+      folderId: null,
+      folderName: null,
+      folderVerifiedAt: null,
     }).returning({ id: googleDriveConnections.id });
     return created;
   });
@@ -95,15 +108,15 @@ export async function saveVerifiedFolder(id: string, folder: { id: string; name:
 
 // One OAuth2 client per connection per server process, so access tokens are reused until they expire
 // (googleapis refreshes them automatically from the refresh token). Access tokens are never persisted.
-const clients = new Map<string, InstanceType<typeof google.auth.OAuth2>>();
+const clients = new Map<string, { client: InstanceType<typeof google.auth.OAuth2>; version: number }>();
 
 export function oauthClientFor(connection: DriveConnection) {
   const cached = clients.get(connection.id);
-  if (cached) return cached;
+  if (cached && cached.version === connection.updatedAt.getTime()) return cached.client;
   const { clientId, clientSecret } = oauthClientCredentials();
   const client = new google.auth.OAuth2(clientId, clientSecret);
   client.setCredentials({ refresh_token: decryptToken(connection.encryptedRefreshToken, TOKEN_PURPOSE, encryptionKey()), scope: connection.scopes });
-  clients.set(connection.id, client);
+  clients.set(connection.id, { client, version: connection.updatedAt.getTime() });
   return client;
 }
 
@@ -119,15 +132,16 @@ export function driveFor(connection: DriveConnection): drive_v3.Drive {
 
 export type FolderCheck =
   | { ok: true; folder: { id: string; name: string } }
-  | { ok: false; reason: "not_accessible" | "not_a_folder" | "read_only" | "trashed" | "auth_failed" | "error" };
+  | { ok: false; reason: "outside_parent" | "not_accessible" | "not_a_folder" | "read_only" | "trashed" | "auth_failed" | "error" };
 
 /** Checks whether the app (drive.file) can see and write to a folder. */
-export async function checkFolderAccess(connection: DriveConnection, folderId: string): Promise<FolderCheck> {
+export async function checkFolderAccess(connection: DriveConnection, folderId: string, parentId?: string): Promise<FolderCheck> {
   try {
-    const { data } = await driveFor(connection).files.get({ fileId: folderId, fields: "id,name,mimeType,trashed,capabilities(canAddChildren)", supportsAllDrives: true });
+    const { data } = await driveFor(connection).files.get({ fileId: folderId, fields: "id,name,mimeType,parents,trashed,capabilities(canAddChildren)", supportsAllDrives: true });
     if (data.mimeType !== FOLDER_MIME) return { ok: false, reason: "not_a_folder" };
     if (data.trashed) return { ok: false, reason: "trashed" };
-    if (data.capabilities?.canAddChildren === false) return { ok: false, reason: "read_only" };
+    if (parentId && !data.parents?.includes(parentId)) return { ok: false, reason: "outside_parent" };
+    if (data.capabilities?.canAddChildren !== true) return { ok: false, reason: "read_only" };
     return { ok: true, folder: { id: data.id ?? folderId, name: data.name ?? "Folder" } };
   } catch (error) {
     const mapped = providerError(error, "metadata");
@@ -172,13 +186,21 @@ export async function revokeConnection(connection: DriveConnection) {
 export function createConnectedDriveStorageAdapter() {
   let current: DriveConnection | null = null;
   return createGoogleDriveStorageAdapter({
-    async resolve(): Promise<GoogleDriveContext> {
+    async resolve(file): Promise<GoogleDriveContext> {
       const connection = await requireConnection();
-      if (!connection.folderId || !connection.folderVerifiedAt) {
-        throw new StorageError("ACCESS_DENIED", "The receipts folder has not been authorized yet. Choose it in Settings → Integrations → Google Drive.", 503);
-      }
       current = connection;
-      return { drive: driveFor(connection), folderId: connection.folderId, sharedDriveId: getGoogleDriveEnv().GOOGLE_DRIVE_SHARED_DRIVE_ID };
+      const drive = driveFor(connection);
+      const context = { drive, sharedDriveId: getGoogleDriveEnv().GOOGLE_DRIVE_SHARED_DRIVE_ID };
+      if (!file) return context;
+      if (!file.category) throw new StorageError("UPLOAD_FAILED", "The upload destination is missing.");
+      const mapping = await getMapping(connection.id, file.category);
+      const message = `Choose or reauthorize the ${categoryLabel[file.category]} folder in Settings ? Integrations ? Google Drive.`;
+      if (!connection.folderId || !mapping) throw new StorageError("ACCESS_DENIED", message, 503);
+      const checked = await checkFolderAccess(connection, mapping.folderId, connection.folderId);
+      if (!checked.ok) throw new StorageError("ACCESS_DENIED", message, 503);
+      if (!file.operationKey) return { ...context, folderId: mapping.folderId };
+      const reservation = await reserveUpload(connection.id, file.category, file.operationKey, mapping.folderId, drive);
+      return { ...context, folderId: mapping.folderId, reservation };
     },
     async onAuthFailure() {
       if (!current) return;
@@ -193,7 +215,17 @@ export type DriveReadiness =
   | { ready: false; reason: "not_configured" | "migration_pending" | "not_connected" | "folder_not_authorized" | "error"; message: string };
 
 /** Whether uploads can work right now, with a user-facing reason when they cannot. Never throws. */
-export async function getDriveReadiness(): Promise<DriveReadiness> {
+export async function getMapping(connectionId: string, category: DriveCategory) {
+  try {
+    const [row] = await db.select().from(driveFolderMappings).where(and(eq(driveFolderMappings.connectionId, connectionId), eq(driveFolderMappings.category, category)));
+    return row;
+  } catch (error) {
+    if (isMissingConnectionsTable(error)) throw new StorageError("CONFIGURATION_MISSING", "Drive folder mappings require database migration 0011.", 503);
+    throw error;
+  }
+}
+
+export async function getDriveReadiness(category?: DriveCategory): Promise<DriveReadiness> {
   let env;
   try { env = getGoogleDriveEnv(); } catch { return { ready: false, reason: "not_configured", message: "Google Drive server settings are incomplete." }; }
   if (!env.GOOGLE_TOKEN_ENCRYPTION_KEY || !process.env.AUTH_GOOGLE_ID || !process.env.AUTH_GOOGLE_SECRET) return { ready: false, reason: "not_configured", message: "Google Drive server settings are incomplete." };
@@ -201,9 +233,11 @@ export async function getDriveReadiness(): Promise<DriveReadiness> {
     const connection = await getActiveConnection();
     if (!connection) return { ready: false, reason: "not_connected", message: "Google Drive is not connected yet." };
     if (!connection.folderId || !connection.folderVerifiedAt) return { ready: false, reason: "folder_not_authorized", message: "Google Drive is connected, but the receipts folder has not been chosen yet." };
-    return { ready: true, folderName: connection.folderName, accountEmail: connection.googleAccountEmail };
+    const mapping = category && await getMapping(connection.id, category);
+    if (category && !mapping) return { ready: false, reason: "folder_not_authorized", message: `Choose the ${categoryLabel[category]} folder in Google Drive settings.` };
+    return { ready: true, folderName: mapping?.folderName ?? connection.folderName, accountEmail: connection.googleAccountEmail };
   } catch (error) {
-    if (error instanceof StorageError && error.code === "CONFIGURATION_MISSING") return { ready: false, reason: "migration_pending", message: "Google Drive storage is waiting for its database setup (migration 0010)." };
+    if (error instanceof StorageError && error.code === "CONFIGURATION_MISSING") return { ready: false, reason: "migration_pending", message: error.message };
     return { ready: false, reason: "error", message: "Google Drive status could not be checked." };
   }
 }

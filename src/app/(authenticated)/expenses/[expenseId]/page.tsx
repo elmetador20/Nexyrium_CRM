@@ -23,7 +23,7 @@ export default async function ExpenseDetailPage({ params }: { params: Promise<{ 
   if (!result) notFound();
   const { expense, receipts } = result;
   const canUpload = can(actor, PERMISSIONS.EXPENSES_RECEIPTS_UPLOAD) && (expense.status === "draft" || expense.status === "submitted");
-  const readiness = canUpload ? await getDriveReadiness() : null;
+  const readiness = canUpload ? await getDriveReadiness("expense") : null;
   const labels = await resolveLabels({ users: [expense.ownerId], departments: [expense.departmentId], clients: [expense.clientId], projects: [expense.projectId] });
 
   return (

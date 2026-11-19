@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { attachmentId } from "@/features/integrations/google-drive/attachment-id";
+import { and, ne, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { auditLogs, documentStorageObjects, documents, expenseReceipts } from "@/db/schema";
@@ -48,28 +49,31 @@ export function createExpenseReceiptService(input: { storageFactory: () => Stora
       if (!input.allowedMimeTypes.has(validation.mimeType)) throw new AccountingError("INVALID", "This receipt file type is not allowed.");
       const mimeType = validation.mimeType;
       const checksum = createHash("sha256").update(body).digest("hex");
+      const id = attachmentId("expense", expenseId, checksum);
       const [document] = await db.transaction(async (tx) => {
-        const [created] = await tx.insert(documents).values({ title: filename, originalFilename: filename, mimeType: mimeType, sizeBytes: body.byteLength, checksum, category: "expense_receipt", status: "pending", ownerId: current.expense.ownerId, departmentId: current.expense.departmentId, createdByUserId: actor.userId, updatedByUserId: actor.userId }).returning();
+        const [created] = await tx.insert(documents).values({ id, title: filename, originalFilename: filename, mimeType: mimeType, sizeBytes: body.byteLength, checksum, category: "expense_receipt", status: "pending", ownerId: current.expense.ownerId, departmentId: current.expense.departmentId, createdByUserId: actor.userId, updatedByUserId: actor.userId }).onConflictDoUpdate({ target: documents.id, set: { id } }).returning();
         if (!created) throw new AccountingError("INVALID", "Receipt metadata could not be created.");
-        await tx.insert(expenseReceipts).values({ expenseId, documentId: created.id, uploadedByUserId: actor.userId });
+        await tx.insert(expenseReceipts).values({ expenseId, documentId: created.id, uploadedByUserId: actor.userId }).onConflictDoNothing();
         return [created] as const;
       });
+      if (document.status === "available") {
+        const [object] = await db.select().from(documentStorageObjects).where(eq(documentStorageObjects.documentId, id));
+        const link = object?.providerMetadata?.webViewLink;
+        return { ...document, contentUrl: `/api/v1/expenses/${expenseId}/receipts/${id}/content`, driveUrl: typeof link === "string" ? link : null };
+      }
       let uploaded: Awaited<ReturnType<StorageAdapter["upload"]>> | null = null;
       try {
-        uploaded = await input.storageFactory().upload({ filename, mimeType: mimeType, body });
+        uploaded = await input.storageFactory().upload({ category: "expense", operationKey: id, filename, mimeType: mimeType, body });
         const [available] = await db.transaction(async (tx) => {
-          await tx.insert(documentStorageObjects).values({ documentId: document.id, provider: uploaded!.provider, providerObjectId: uploaded!.objectId, providerParentId: uploaded!.parentId, providerRevision: uploaded!.revision, providerEtag: uploaded!.etag, checksum: uploaded!.checksum, sizeBytes: uploaded!.sizeBytes, status: "uploaded", providerMetadata: uploaded!.metadata, lastSyncedAt: new Date() });
-          const [updated] = await tx.update(documents).set({ status: "available", updatedByUserId: actor.userId, updatedAt: new Date() }).where(eq(documents.id, document.id)).returning();
+          await tx.insert(documentStorageObjects).values({ documentId: document.id, provider: uploaded!.provider, providerObjectId: uploaded!.objectId, providerParentId: uploaded!.parentId, providerRevision: uploaded!.revision, providerEtag: uploaded!.etag, checksum: uploaded!.checksum, sizeBytes: uploaded!.sizeBytes, status: "uploaded", providerMetadata: uploaded!.metadata, lastSyncedAt: new Date() }).onConflictDoNothing();
+          const [updated] = await tx.update(documents).set({ status: "available", failureCode: null, failureMessage: null, updatedByUserId: actor.userId, updatedAt: new Date() }).where(eq(documents.id, document.id)).returning();
           await tx.insert(auditLogs).values({ actorUserId: actor.userId, action: "expense.receipt.upload", resourceType: "expense", resourceId: expenseId, outcome: "success", correlationId: correlationId ?? null, metadata: { documentId: document.id, mimeType: mimeType, sizeBytes: body.byteLength } });
           return [updated] as const;
         });
         const driveUrl = typeof uploaded.metadata.webViewLink === "string" ? uploaded.metadata.webViewLink : null;
         return { ...available, contentUrl: `/api/v1/expenses/${expenseId}/receipts/${document.id}/content`, driveUrl };
       } catch (error) {
-        if (uploaded) {
-          try { await input.storageFactory().delete(uploaded.objectId); } catch { /* best effort cleanup */ }
-        }
-        await db.update(documents).set({ status: "failed", failureCode: error instanceof StorageError ? error.code : "UPLOAD_FAILED", failureMessage: error instanceof Error ? error.message : "Receipt upload failed.", updatedByUserId: actor.userId, updatedAt: new Date() }).where(eq(documents.id, document.id));
+        await db.update(documents).set({ status: "failed", failureCode: error instanceof StorageError ? error.code : "UPLOAD_FAILED", failureMessage: error instanceof Error ? error.message : "Receipt upload failed.", updatedByUserId: actor.userId, updatedAt: new Date() }).where(and(eq(documents.id, document.id), ne(documents.status, "available")));
         await db.insert(auditLogs).values({ actorUserId: actor.userId, action: "expense.receipt.upload", resourceType: "expense", resourceId: expenseId, outcome: "failure", correlationId: correlationId ?? null, metadata: { documentId: document.id } });
         throw mapStorageError(error);
       }

@@ -1,7 +1,8 @@
 import { CheckCircle2, CircleDashed, FolderOpen, XCircle } from "lucide-react";
 
 import { DriveControls } from "@/features/integrations/google-drive/DriveControls";
-import { getConnectionSummary } from "@/features/integrations/google-drive/connection";
+import { driveCategories, categoryLabel, type DriveCategory } from "@/features/integrations/google-drive/categories";
+import { getConnectionSummary, getMapping } from "@/features/integrations/google-drive/connection";
 import { KeyValue, PageHeader, Panel, StatusBadge } from "@/components/nx";
 import { PERMISSIONS } from "@/lib/authorization/permissions";
 import { can } from "@/lib/authorization/policy";
@@ -30,6 +31,20 @@ export default async function GoogleDriveIntegrationPage({ searchParams }: { sea
   }
   const pickerConfigured = Boolean(env?.GOOGLE_PICKER_API_KEY && env?.GOOGLE_CLOUD_PROJECT_NUMBER);
   const folderReady = Boolean(connection?.folderId && connection.folderVerifiedAt);
+  const mappings: Partial<Record<DriveCategory, string>> = {};
+  if (connection) {
+    try {
+      for (const category of driveCategories) {
+        const mapping = await getMapping(connection.id, category);
+        if (mapping) mappings[category] = mapping.folderName;
+      }
+    } catch (error) {
+      // Surface the real cause instead of always blaming the migration (it masked a column-name mismatch).
+      const code = (error as { cause?: { code?: unknown } })?.cause?.code;
+      console.error("[google-drive] category mappings could not be loaded", { code: typeof code === "string" ? code : undefined });
+      setupError = error instanceof StorageError ? error.message : "Category folders could not be loaded from the database. Check the server logs for the database error code.";
+    }
+  }
   const manage = can(actor, PERMISSIONS.SETTINGS_MANAGE);
 
   return (
@@ -41,7 +56,7 @@ export default async function GoogleDriveIntegrationPage({ searchParams }: { sea
         <p role="alert" className="mb-4 rounded-lg bg-warning-light px-3 py-2 text-sm">Google did not return Drive access. Make sure you ticked the Google Drive permission on the consent screen, then try Connect again.</p>
       ) : null}
       <div className="grid gap-4">
-        <Panel title="Setup" description="Receipts upload once all three steps are complete.">
+        <Panel title="Setup" description="Connect the account, verify the parent, then choose each upload folder.">
           <ul className="space-y-2">
             <Step done={config.configured}>Server configuration {config.configured ? "is complete" : <>is missing: <code className="text-xs">{config.missing.join(", ")}</code></>}</Step>
             <Step done={Boolean(connection)}>Google account connected {connection ? <>as <strong>{connection.googleAccountEmail}</strong></> : null}</Step>
@@ -61,7 +76,8 @@ export default async function GoogleDriveIntegrationPage({ searchParams }: { sea
               <KeyValue label="Folder verified" value={connection.folderVerifiedAt ? formatDate(connection.folderVerifiedAt, true) : null} />
             </dl>
           ) : <p className="text-sm text-text-secondary">Not connected. Connecting uses your existing Google sign-in and asks only for the Google Drive “files created or opened by this app” permission.</p>}
-          {manage && !setupError ? <div className="mt-5 border-t border-border pt-4"><DriveControls connected={Boolean(connection)} folderReady={folderReady} configuredFolderId={env?.GOOGLE_DRIVE_FOLDER_ID ?? null} pickerConfigured={pickerConfigured} /></div> : <p className="mt-4 text-xs text-text-muted">Only workspace administrators can change this connection.</p>}
+          {!manage && connection && <ul>{driveCategories.map(category => <li key={category}>{categoryLabel[category]} ? {mappings[category] ?? "Unconfigured"}</li>)}</ul>}
+          {manage && !setupError ? <div className="mt-5 border-t border-border pt-4"><DriveControls mappings={mappings} connectionId={connection?.id} connected={Boolean(connection)} folderReady={folderReady} configuredFolderId={env?.GOOGLE_DRIVE_FOLDER_ID ?? null} pickerConfigured={pickerConfigured} /></div> : <p className="mt-4 text-xs text-text-muted">Only workspace administrators can change this connection.</p>}
         </Panel>
       </div>
     </section>

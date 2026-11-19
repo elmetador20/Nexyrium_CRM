@@ -76,6 +76,9 @@ export {
   documents,
   googleDriveConnectionStatusEnum,
   googleDriveConnections,
+  driveCategory,
+  driveFolderMappings,
+  driveUploads,
 } from "./documents";
 
 export {
