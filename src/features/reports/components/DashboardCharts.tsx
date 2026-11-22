@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Area, Line, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { compactMinor } from "@/lib/format";
 
-const GREEN = "#245B45";
-const GREEN_2 = "#36785C";
-const ORANGE = "#E88945";
-const MINT = "#E5F0E7";
+const GREEN = "#436b52";
+const GREEN_2 = "#647e69";
+const ORANGE = "#ca4121";
+const MINT = "#eaf0e9";
 const PALETTE = [GREEN, ORANGE, "#2F6690", GREEN_2, "#B4612A", "#7A8B83", "#9BC5A8"];
 
-const tooltipStyle = { borderRadius: 10, border: "1px solid #E1E9E3", boxShadow: "0 8px 24px -12px rgb(24 35 31 / 25%)", fontSize: 12 } as const;
+const tooltipStyle = { borderRadius: 10, border: "1px solid #dfe5de", boxShadow: "0 8px 24px -12px rgb(24 35 31 / 25%)", fontSize: 12 } as const;
 
 export type TrendPoint = { month: string; label: string; revenue: number; expenses: number; net: number };
 
@@ -30,9 +30,9 @@ export function RevenueExpenseChart({ data, currency }: { data: TrendPoint[]; cu
           <defs>
             <linearGradient id="nxRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={GREEN} stopOpacity={0.22} /><stop offset="100%" stopColor={GREEN} stopOpacity={0} /></linearGradient>
           </defs>
-          <CartesianGrid stroke="#EDF2EE" vertical={false} />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#6B7A72" }} />
-          <YAxis tickLine={false} axisLine={false} width={56} tick={{ fontSize: 11, fill: "#6B7A72" }} tickFormatter={(value: number) => compactMinor(value, currency)} />
+          <CartesianGrid stroke="#e8ece6" vertical={false} />
+          <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#626a64" }} />
+          <YAxis tickLine={false} axisLine={false} width={56} tick={{ fontSize: 11, fill: "#626a64" }} tickFormatter={(value: number) => compactMinor(value, currency)} />
           <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [compactMinor(Number(value), currency), String(name)]} cursor={{ fill: MINT, opacity: 0.6 }} />
           <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
           <Area type="monotone" dataKey="revenue" name="Revenue collected" stroke={GREEN} strokeWidth={2} fill="url(#nxRevenue)" style={{ cursor: "pointer" }} />
@@ -53,7 +53,7 @@ export function LinkedBarChart({ data, color = GREEN, ariaLabel }: { data: BarDa
     <div className="w-full" style={{ height: Math.max(140, data.length * 40 + 20) }} role="img" aria-label={ariaLabel}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data.map((row) => ({ label: row.label, value: row.value, display: row.display }))} layout="vertical" margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-          <CartesianGrid stroke="#EDF2EE" horizontal={false} />
+          <CartesianGrid stroke="#e8ece6" horizontal={false} />
           <XAxis type="number" hide />
           <YAxis type="category" dataKey="label" width={104} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#4A5A52" }} />
           <Tooltip contentStyle={tooltipStyle} cursor={{ fill: MINT, opacity: 0.6 }} formatter={(_value, _name, item) => [String((item?.payload as { display?: string } | undefined)?.display ?? ""), "Value"]} />
@@ -77,7 +77,7 @@ export function LinkedDonut({ data, centerLabel, centerValue }: { data: BarDatum
           <PieChart>
             <Pie data={slices} dataKey="value" nameKey="label" innerRadius={52} outerRadius={78} paddingAngle={total ? 2 : 0} stroke="none"
               onClick={(_entry, index) => { const href = total ? data[index]?.href : undefined; if (href) router.push(href); }} style={{ cursor: total ? "pointer" : "default" }}>
-              {slices.map((_, index) => <Cell key={index} fill={total ? PALETTE[index % PALETTE.length] : "#E1E9E3"} />)}
+              {slices.map((_, index) => <Cell key={index} fill={total ? PALETTE[index % PALETTE.length] : "#dfe5de"} />)}
             </Pie>
             {total ? <Tooltip contentStyle={tooltipStyle} formatter={(_value, _name, item) => [String((item?.payload as { display?: string } | undefined)?.display ?? ""), String((item?.payload as { label?: string } | undefined)?.label ?? "")]} /> : null}
           </PieChart>

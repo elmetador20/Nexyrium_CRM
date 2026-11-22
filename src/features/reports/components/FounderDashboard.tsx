@@ -274,7 +274,7 @@ export function FounderDashboard({ data, departments, variant = "overview", user
           ) : null}
           {leads.available ? (
             <Panel title="Lead status" description="Current, all open leads" action={<PanelLink href="/crm/leads">Leads</PanelLink>}>
-              {leadStatusData.length ? <LinkedBarChart data={leadStatusData} color="#36785C" ariaLabel="Leads by status" /> : <EmptyLine>No leads yet.</EmptyLine>}
+              {leadStatusData.length ? <LinkedBarChart data={leadStatusData} color="#647e69" ariaLabel="Leads by status" /> : <EmptyLine>No leads yet.</EmptyLine>}
             </Panel>
           ) : null}
           {leads.available ? (

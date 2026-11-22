@@ -52,7 +52,7 @@ export function TopBar({ user, permissions = [] }: TopBarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-[color-mix(in_srgb,var(--color-background)_85%,transparent)] backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-border bg-surface">
       <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center gap-2 pl-16 pr-3 sm:gap-3 sm:pr-6 lg:px-8">
         <p className="hidden min-w-0 shrink-0 text-sm font-medium text-text-secondary md:block">
           <span className="text-text-muted">NEXYRIUM</span><span className="mx-2 text-border-strong">/</span><span className="text-text-primary">{section}</span>
@@ -70,7 +70,7 @@ export function TopBar({ user, permissions = [] }: TopBarProps) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search…"
             aria-label="Search the workspace"
-            className="h-10 w-full rounded-[10px] border border-border bg-surface pl-9 pr-14 text-sm text-text-primary shadow-[0_1px_2px_rgb(24_35_31/4%)] outline-none placeholder:text-text-muted focus:border-secondary focus:ring-[3px] focus:ring-[rgb(54_120_92/16%)]"
+            className="h-10 w-full rounded-[10px] border border-border bg-surface pl-9 pr-14 text-sm text-text-primary shadow-[0_1px_2px_rgb(24_35_31/4%)] outline-none placeholder:text-text-muted focus:border-secondary focus:ring-[3px] focus:ring-primary-light"
           />
           <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-border bg-surface-muted px-1.5 text-[0.65rem] font-medium text-text-muted sm:block">Ctrl K</kbd>
         </form>

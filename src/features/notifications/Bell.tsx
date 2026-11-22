@@ -1,4 +1,5 @@
 "use client";
+import "@/features/branding/theme.css";
 import Link from "next/link";
 import { Bell as BellIcon } from "lucide-react";
 import { useEffect,useState } from "react";
@@ -14,5 +15,5 @@ export function NotificationBell() {
     window.addEventListener("inbox-changed",refresh);
     return ()=>{active=false;clearInterval(timer);window.removeEventListener("focus",refresh);window.removeEventListener("inbox-changed",refresh);};
   },[]);
-  return <Link href="/settings/notifications" aria-label={`Notifications, ${unread} unread`} className="button-secondary relative inline-flex items-center gap-1"><BellIcon size={18}/>{unread>0 && <span>{unread>99?"99+":unread}</span>}</Link>;
+  return <Link href="/settings/notifications" aria-label={`Notifications, ${unread} unread`} className="button-secondary relative inline-flex items-center gap-1"><BellIcon size={18}/>{unread>0 && <span className="rounded-full bg-primary px-1.5 text-xs font-semibold text-white tabular-nums">{unread>99?"99+":unread}</span>}</Link>;
 }

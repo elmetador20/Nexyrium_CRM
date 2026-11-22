@@ -1,3 +1,5 @@
+import symbol from "@/features/branding/symbol.png";
+import wordmark from "@/features/branding/wordmark.png";
 import Image from "next/image";
 import { signIn } from "@/auth";
 import { Briefcase, DollarSign, LayoutDashboard, Users } from "lucide-react";
@@ -33,14 +35,14 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen bg-background flex">
       <div className="hidden lg:flex lg:flex-1 bg-surface relative overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#FFFFFF_0%,#F3F8F4_55%,#E5F0E7_100%)]" />
+        <div className="absolute inset-0 bg-mint" />
         <div className="absolute inset-0 nx-grid-bg opacity-70" />
         
         <div className="relative flex h-full flex-col items-center justify-center p-12">
           <div className="max-w-lg">
             <div className="flex items-center gap-3 mb-12">
-              <Image src="/Logo.png" alt="" width={48} height={48} className="h-12 w-12 object-contain" priority />
-              <span className="text-2xl font-semibold tracking-[0.08em] text-text-primary">NEXYRIUM</span>
+              <Image src={symbol} alt="" width={48} height={48} className="h-12 w-12 object-contain" priority />
+              <Image src={wordmark} alt="Nexyrium" width={146} height={35} />
             </div>
             
             <h1 className="text-4xl font-semibold text-text-primary leading-tight mb-6">
@@ -84,8 +86,8 @@ export default async function LoginPage({
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 text-center">
             <div className="inline-flex items-center gap-3 mb-6">
-              <Image src="/Logo.png" alt="" width={40} height={40} className="h-10 w-10 object-contain" />
-              <span className="text-xl font-semibold tracking-[0.08em] text-text-primary">NEXYRIUM</span>
+              <Image src={symbol} alt="" width={40} height={40} className="h-10 w-10 object-contain" />
+              <Image src={wordmark} alt="Nexyrium" width={146} height={35} />
             </div>
           </div>
 

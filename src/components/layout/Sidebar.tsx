@@ -1,5 +1,7 @@
 "use client";
 
+import symbol from "@/features/branding/symbol.png";
+import wordmark from "@/features/branding/wordmark.png";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -108,18 +110,15 @@ export function Sidebar({ user, navigation = navigationSections, permissions = [
       <aside
         id="app-sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-surface transition-transform duration-200 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-mint transition-transform duration-200 lg:translate-x-0",
           mobileOpen ? "translate-x-0 shadow-xl" : "-translate-x-full",
         )}
         aria-label="Main navigation"
       >
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
           <Link href="/dashboard" className="flex items-center gap-2.5" aria-label="NEXYRIUM home">
-            <Image src="/Logo.png" alt="" width={34} height={34} className="h-[34px] w-[34px] object-contain" priority />
-            <span className="leading-tight">
-              <span className="block text-[0.95rem] font-semibold tracking-[0.08em] text-text-primary">NEXYRIUM</span>
-              <span className="block text-[0.68rem] font-medium text-text-muted">Business OS</span>
-            </span>
+            <Image src={symbol} alt="" width={40} height={33} priority />
+            <Image src={wordmark} alt="Nexyrium" width={100} height={24} priority />
           </Link>
           <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-text-muted hover:bg-surface-hover lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X className="h-4 w-4" /></button>
         </div>
