@@ -1,14 +1,12 @@
 "use client";
 
-import symbol from "@/features/branding/symbol.png";
-import wordmark from "@/features/branding/wordmark.png";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Activity, BarChart3, Briefcase, CheckSquare, Contact, FileSignature, FileText, FolderKanban, Handshake,
-  LayoutDashboard, LogOut, Menu, Plug, ReceiptText, Settings, Target, TrendingUp, UserPlus, Users, UserCog, X, Banknote, KanbanSquare,
+  LayoutDashboard, LogOut, Plug, ReceiptText, Settings, Target, TrendingUp, UserPlus, Users, UserCog, X, Banknote, KanbanSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
@@ -102,7 +100,7 @@ export function Sidebar({ user, navigation = navigationSections, permissions = [
         aria-expanded={mobileOpen}
         aria-controls="app-sidebar"
       >
-        <Menu className="h-5 w-5" />
+        <Image src="/branding/symbol.webp" alt="" width={28} height={23} />
       </button>
 
       {mobileOpen ? <div className="fixed inset-0 z-40 bg-[#18231F]/40 backdrop-blur-[2px] lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" /> : null}
@@ -117,8 +115,8 @@ export function Sidebar({ user, navigation = navigationSections, permissions = [
       >
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 px-4">
           <Link href="/dashboard" className="flex items-center gap-2.5" aria-label="NEXYRIUM home">
-            <Image src={symbol} alt="" width={40} height={33} priority />
-            <Image src={wordmark} alt="Nexyrium" width={100} height={24} priority />
+            <Image src="/branding/symbol.webp" alt="" width={40} height={33} priority />
+            <Image src="/branding/wordmark.webp" alt="Nexyrium" width={100} height={24} priority />
           </Link>
           <button type="button" className="grid h-8 w-8 place-items-center rounded-md text-text-muted hover:bg-surface-hover lg:hidden" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X className="h-4 w-4" /></button>
         </div>
