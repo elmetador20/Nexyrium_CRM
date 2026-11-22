@@ -32,6 +32,8 @@ export const pushDevices = pgTable("notification_push_devices",{
   id:uuid("id").defaultRandom().primaryKey(),
   userId:uuid("user_id").notNull().references(()=>users.id,{onDelete:"cascade"}),
   endpoint:text("endpoint").notNull(),
+  p256dh:text("p256dh"),
+  auth:text("auth"),
 },t=>[uniqueIndex("push_devices_endpoint_unique").on(t.endpoint),index("push_devices_user_idx").on(t.userId)]);
 
 export const pushDeliveries = pgTable("notification_push_deliveries",{

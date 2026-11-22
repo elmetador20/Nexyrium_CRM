@@ -16,14 +16,15 @@ export function pushConfiguration() {
   const pub=ec.getPublicKey();
   return {contact,publicKey:pub.toString("base64url"),privateKey:createPrivateKey({format:"jwk",key:{kty:"EC",crv:"P-256",d:secret,x:pub.subarray(1,33).toString("base64url"),y:pub.subarray(33).toString("base64url")}})};
 }
-// Payload-free push keeps all CRM details on the authenticated origin.
-export async function sendWakeup(endpoint:string) {
+import type { SubscriptionKeys } from "./subscription-keys";
+export async function sendWakeup(endpoint:string, notificationId?:string, content?: { keys: SubscriptionKeys; payload: string }) {
   const url=checkedEndpoint(endpoint);
   const {contact,publicKey,privateKey}=pushConfiguration();
   const encode=(data:object)=>Buffer.from(JSON.stringify(data)).toString("base64url");
   const claims=encode({typ:"JWT",alg:"ES256"})+"."+encode({aud:url.origin,sub:contact,exp:Math.floor(Date.now()/1000)+3600});
   const jwt=claims+"."+sign("sha256",Buffer.from(claims),{key:privateKey,dsaEncoding:"ieee-p1363"}).toString("base64url");
-  const response=await fetch(url,{method:"POST",headers:{Authorization:"vapid t="+jwt+", k="+publicKey,TTL:"3600",Topic:"nexyrium-inbox","Content-Length":"0"},redirect:"error",signal:AbortSignal.timeout(5000)});
+  const encrypted = content ? (await import("web-push")).default.encrypt(content.keys.p256dh, content.keys.auth, Buffer.from(content.payload), "aes128gcm").cipherText : undefined;
+  const response=await fetch(url,{method:"POST",headers:{Authorization:"vapid t="+jwt+", k="+publicKey,TTL:"3600",...(notificationId ? {Topic:notificationId.replaceAll("-","")} : {}),...(encrypted ? {"Content-Encoding":"aes128gcm","Content-Type":"application/octet-stream"} : {}),"Content-Length":String(encrypted?.length ?? 0)},body:encrypted ? new Uint8Array(encrypted) : undefined,redirect:"error",signal:AbortSignal.timeout(5000)});
   await response.body?.cancel();
   return response.status;
 }

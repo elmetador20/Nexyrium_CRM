@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import {validKeys} from "./subscription-keys";
 import {deviceEnabled,deviceKey,registerDevice,removeDevice,testDevice} from "./devices";
 export function Devices(){
   const [enabled,setEnabled]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState("");
@@ -21,7 +22,8 @@ export function Devices(){
         const publicKey=await deviceKey();
         const key=Uint8Array.from(atob(publicKey.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0));
         subscription??=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});
-        await registerDevice(subscription.endpoint);setEnabled(true);setMessage("Phone notifications enabled.");
+        const keys=subscription.toJSON().keys;
+        await registerDevice(subscription.endpoint,validKeys(keys) ? keys : undefined);setEnabled(true);setMessage("Phone notifications enabled.");
       } else if(action==="disable"){
         if(subscription){await removeDevice(subscription.endpoint);await subscription.unsubscribe();}
         setEnabled(false);setMessage("Phone notifications disabled.");
