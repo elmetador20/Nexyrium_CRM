@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { majorToMinor } from "@/features/finance/shared/money";
 
-export function ExpenseFields({departments}:{departments:{id:string;name:string}[]}) {
+export function ExpenseFields({departments,canSubmit=false}:{canSubmit?:boolean;departments:{id:string;name:string}[]}) {
   const entryId = useRef("");
   const router = useRouter();
   const [saved, setSaved] = useState("");
@@ -18,6 +18,7 @@ export function ExpenseFields({departments}:{departments:{id:string;name:string}
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
+    const send = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === "submit";
     const form = new FormData(event.currentTarget);
     setBusy(true);
     setError("");
@@ -45,6 +46,10 @@ export function ExpenseFields({departments}:{departments:{id:string;name:string}
         const response = await fetch(`/api/v1/expenses/${id}/receipts`, {method: "POST", body: attachment});
         if (!response.ok) throw Error((await response.json()).error || "Could not upload receipt.");
       }
+      if (send) {
+        const response = await fetch(`/api/v1/expenses/${id}/transition`, {method:"POST", headers:{"content-type":"application/json"},body:JSON.stringify({action:"submit"})});
+        if (!response.ok) throw Error((await response.json()).error || "Could not submit for review.");
+      }
       router.push(`/expenses/${id}`);
       router.refresh();
     } catch (err) {
@@ -65,7 +70,7 @@ export function ExpenseFields({departments}:{departments:{id:string;name:string}
     </fieldset>
     <label className="block">Receipt or screenshot (optional)<input className="input" type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/webp" disabled={busy} /></label>
     {error && <p role="alert">{error}</p>}
-    <div className="flex flex-wrap gap-3"><button className="button-primary" disabled={busy}>{busy ? "Saving…" : saved ? "Finish receipt upload" : "Save expense"}</button>
+    <div className="flex flex-wrap gap-3">{canSubmit && <button className="button-primary" value="submit" disabled={busy}>Submit for approval</button>}<button className={canSubmit ? "button-secondary" : "button-primary"} value="draft" disabled={busy}>Save draft</button>
       {saved && <Link className="button-secondary" href={`/expenses/${saved}`}>Open saved expense</Link>}</div>
   </form>;
 }

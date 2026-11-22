@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationBell } from "@/features/notifications/Bell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -87,6 +88,7 @@ export function TopBar({ user, permissions = [] }: TopBarProps) {
             ) : null}
           </div>
         ) : null}
+        <NotificationBell />
         <UserMenu user={user} permissions={permissions} />
       </div>
     </header>

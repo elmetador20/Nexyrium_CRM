@@ -1,3 +1,4 @@
+import { notifyExpense } from "@/features/notifications/expense-events";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -96,6 +97,7 @@ export function createExpenseService() {
         const [record] = await tx.update(expenses).set({ status: "submitted", submittedByUserId: actor.userId, submittedAt: new Date(), updatedAt: new Date() }).where(and(eq(expenses.id, id), eq(expenses.status, "draft"))).returning();
         if (!record) throw new AccountingError("CONFLICT", "The expense changed before it could be submitted.");
         await tx.insert(auditLogs).values({ actorUserId: actor.userId, action: "expense.submit", resourceType: "expense", resourceId: id, outcome: "success", correlationId: correlationId ?? null });
+        await notifyExpense(tx, record, actor.userId);
         return [record] as const;
       });
       return updated;
@@ -112,6 +114,7 @@ export function createExpenseService() {
         const [record] = await tx.update(expenses).set({ status: "approved", approvedByUserId: actor.userId, approvalReason: input.reason, approvedAt: new Date(), updatedAt: new Date() }).where(and(eq(expenses.id, id), eq(expenses.status, "submitted"))).returning();
         if (!record) throw new AccountingError("CONFLICT", "The expense changed before it could be approved.");
         await tx.insert(auditLogs).values({ actorUserId: actor.userId, action: "expense.approve", resourceType: "expense", resourceId: id, outcome: "success", correlationId: correlationId ?? null, metadata: { reason: input.reason, submittedByUserId: current.expense.submittedByUserId } });
+        await notifyExpense(tx, record, actor.userId);
         return [record] as const;
       });
       return updated;
@@ -128,6 +131,7 @@ export function createExpenseService() {
         const [record] = await tx.update(expenses).set({ status: "rejected", rejectedByUserId: actor.userId, rejectionReason: input.reason, rejectedAt: new Date(), updatedAt: new Date() }).where(and(eq(expenses.id, id), eq(expenses.status, "submitted"))).returning();
         if (!record) throw new AccountingError("CONFLICT", "The expense changed before it could be rejected.");
         await tx.insert(auditLogs).values({ actorUserId: actor.userId, action: "expense.reject", resourceType: "expense", resourceId: id, outcome: "success", correlationId: correlationId ?? null, metadata: { reason: input.reason, submittedByUserId: current.expense.submittedByUserId } });
+        await notifyExpense(tx, record, actor.userId);
         return [record] as const;
       });
       return updated;
