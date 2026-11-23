@@ -1,3 +1,4 @@
+import {MobileLeadCard} from "@/features/crm/leads/components/MobileLeadCard";
 import {ContactActions} from "@/features/integrations/whatsapp/ContactActions";
 import Link from "next/link";
 import { FilterChip } from "@/components/nx/FilterChip";
@@ -50,6 +51,16 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <Link href="/crm/leads/new" className="button-primary inline-flex items-center gap-1.5 px-3 py-2 text-sm"><Plus className="h-4 w-4" aria-hidden />New lead</Link>
         </> : null}
       />
+      <form className="leads-mobile-only mb-4 gap-2" method="get">
+        <div className="flex items-center gap-2"><input type="search" name="search" defaultValue={search} aria-label="Search leads" placeholder="Search leads" className="input min-h-11 min-w-0 flex-1"/><button className="button-secondary min-h-11">Search</button></div>
+        <details className="rounded-lg border border-border bg-surface p-3"><summary className="cursor-pointer py-1 text-sm font-medium">Filters{[status,departmentId,acquisitionSource].filter(Boolean).length > 0 && " · " + [status,departmentId,acquisitionSource].filter(Boolean).length + " active"}</summary>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2"><select name="status" aria-label="Lead status" defaultValue={status ?? ""} className="input"><option value="">All statuses</option>{LEAD_STATUSES.map(value=><option key={value} value={value}>{humanize(value)}</option>)}</select>
+        <select aria-label="Department" name="departmentId" defaultValue={departmentId ?? ""} className="input min-w-0 w-full"><option value="">All departments</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select>
+        <select aria-label="Acquisition source" name="acquisitionSource" defaultValue={acquisitionSource ?? ""} className="input min-w-0 w-full"><option value="">All sources</option>{ACQUISITION_SOURCES.map((k) => <option key={k} value={k}>{ACQUISITION_LABELS[k]}</option>)}</select>
+          <div className="flex items-center gap-4"><button className="button-primary min-h-11">Apply filters</button><Link className="nx-link" href="/crm/leads">Clear all</Link></div></div>
+        </details>
+      </form>
+      <div className="leads-desktop-only">
       <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Filter by status">
         {[undefined, ...LEAD_STATUSES].map((s) => {
           const active = status === s;
@@ -65,10 +76,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <button className="button-secondary px-4 py-2 text-sm" type="submit">Apply</button>
         {search || departmentId || acquisitionSource ? <Link href={status ? `?status=${status}` : "?"} className="px-2 text-sm text-text-muted hover:text-primary">Clear</Link> : null}
       </FilterBar>
+      </div>
       {result.items.length === 0 ? (
         <EmptyState icon={<UserPlus className="h-5 w-5" />} title="No leads found" description="Create a lead, import a spreadsheet, or adjust the filters." action={canCreate ? <Link href="/crm/leads/new" className="button-primary px-4 py-2 text-sm">New lead</Link> : undefined} />
       ) : (
-        <TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
+        <>
+          <div className="leads-mobile-only"><ul className="grid gap-3 sm:grid-cols-2">{result.items.map(lead=><MobileLeadCard key={lead.id} lead={lead} department={lead.departmentId ? labels.departments.get(lead.departmentId) : null} owner={label(labels.users,lead.ownerId)}/>)}</ul><Pager page={page} pages={pages} total={result.total} href={href}/></div>
+          <div className="leads-desktop-only"><TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
           <table className="data-table">
             <thead><tr><th>Lead</th><th>Status</th><th>Department</th><th>Source</th><th>Ingestion</th><th>Owner</th><th>Next follow-up</th><th>Contact</th></tr></thead>
             <tbody>
@@ -89,7 +103,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
               ))}
             </tbody>
           </table>
-        </TableCard>
+          </TableCard></div>
+        </>
       )}
     </section>
   );

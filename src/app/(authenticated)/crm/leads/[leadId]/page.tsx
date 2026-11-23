@@ -30,7 +30,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ lea
   const canConvert = can(actor, PERMISSIONS.CRM_LEADS_CONVERT) && !lead.convertedAt;
 
   return (
-    <section>
+    <section className="lead-detail-mobile min-w-0">
       <PageHeader
         back={{ href: "/crm/leads", label: "Leads" }}
         eyebrow="Lead"

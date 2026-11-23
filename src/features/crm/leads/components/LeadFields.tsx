@@ -72,13 +72,13 @@ export function LeadFields({ endpoint, method, initial = {}, departments, salesp
   }
 
   return (
-    <form action={submit} className="space-y-6"><label className="block text-sm font-medium">Department<select className="input" name="departmentId" defaultValue={initial.departmentId ?? ""}><option value="">Use default department</option>{departments.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>
+    <form action={submit} className="lead-edit-mobile space-y-5 sm:space-y-6"><label className="block text-sm font-medium">Department<select className="input" name="departmentId" defaultValue={initial.departmentId ?? ""}><option value="">Use default department</option>{departments.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>
       {salespeople.length > 0 && <label className="label">Assigned salesperson<select name="ownerId" className="input" defaultValue={salespeople.some(person=>person.id===initial.ownerId) ? initial.ownerId ?? "" : ""}><option value="">{method==="PATCH" ? "Keep current assignment" : "Default assignment"}</option>{salespeople.map(person=><option key={person.id} value={person.id}>{person.name}</option>)}</select></label>}
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="Lead name" name="contactName" required defaultValue={initial.contactName} />
         <Field label="Company" name="companyName" required={method === "POST"} defaultValue={initial.companyName ?? ""} />
         <Field label="Email" name="email" type="email" defaultValue={initial.email ?? ""} />
-        <Field label="Phone" name="phone" required={method === "POST"} defaultValue={initial.phone ?? ""} />
+        <Field type="tel" label="Phone" name="phone" required={method === "POST"} defaultValue={initial.phone ?? ""} />
         {method === "POST" ? <Field label="Phone country code (optional)" name="phoneCountryCode" placeholder="+1" defaultValue={initial.phoneCountryCode ?? ""} /> : null}
         {method === "POST" ? (
           <label className="space-y-2 text-sm font-medium">
@@ -119,7 +119,7 @@ function Field({ label, name, type = "text", required, defaultValue, placeholder
   return (
     <label className="space-y-2 text-sm font-medium">
       {label}{required ? <span className="text-danger" aria-hidden> *</span> : null}
-      {as === "textarea" ? <textarea name={name} required={required} defaultValue={defaultValue} className="input min-h-28" /> : <input name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} className="input" />}
+      {as === "textarea" ? <textarea name={name} required={required} defaultValue={defaultValue} className="input min-h-28" /> : <input autoComplete={name === "phone" ? "tel" : name === "email" ? "email" : undefined} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} className="input" />}
     </label>
   );
 }

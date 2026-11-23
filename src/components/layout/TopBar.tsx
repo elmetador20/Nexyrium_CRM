@@ -76,7 +76,7 @@ export function TopBar({ user, permissions = [] }: TopBarProps) {
         </form>
         {creatable.length ? (
           <div className="relative shrink-0" ref={menuRef}>
-            <button type="button" className="button-primary inline-flex h-10 items-center gap-1.5 px-3 text-sm font-medium" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
+            <button type="button" className="button-primary inline-flex h-10 items-center gap-1.5 px-3 text-sm font-medium" aria-label="Create new record" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
               <Plus className="h-4 w-4" aria-hidden /><span className="hidden sm:inline">New</span>
             </button>
             {menuOpen ? (
