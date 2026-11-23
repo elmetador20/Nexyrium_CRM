@@ -1,0 +1,1 @@
+export { receiveWebhook as POST } from "@/features/integrations/whatsapp/webhook";

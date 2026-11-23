@@ -1,6 +1,7 @@
+import {ContactActions,FollowUpOutcome} from "@/features/integrations/whatsapp/ContactActions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarClock, Mail, Pencil, Phone } from "lucide-react";
+import { CalendarClock, Mail, Pencil } from "lucide-react";
 
 import { getAcquisitionSource, ACQUISITION_LABELS } from "@/features/crm/leads/acquisition-source";
 import { ConvertLeadForm } from "@/features/crm/leads/components/ConvertLeadForm";
@@ -34,7 +35,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ lea
         back={{ href: "/crm/leads", label: "Leads" }}
         eyebrow="Lead"
         title={<span className="flex flex-wrap items-center gap-3">{lead.contactName}<StatusBadge status={lead.status} />{lead.convertedAt ? <StatusBadge tone="success">Converted</StatusBadge> : null}</span>}
-        description={[lead.companyName ?? "No company", acquisition ? ACQUISITION_LABELS[acquisition] : humanize(lead.source)].join(" · ")}
+        description={[lead.companyName ?? "No company", acquisition ? ACQUISITION_LABELS[acquisition] : "Unclassified"].join(" · ")}
         actions={<>
           {can(actor, PERMISSIONS.CRM_LEADS_UPDATE) ? <Link href={`/crm/leads/${lead.id}/edit`} className="button-secondary inline-flex items-center gap-1.5 px-3 py-2 text-sm"><Pencil className="h-4 w-4" aria-hidden />Edit</Link> : null}
           {canConvert ? <ConvertLeadForm lead={{ id: lead.id, contactName: lead.contactName, companyName: lead.companyName, email: lead.email, phone: lead.phone }} /> : null}
@@ -44,13 +45,15 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ lea
         <div className="space-y-4">
           <Panel title="Contact">
             <dl className="grid gap-4 sm:grid-cols-2">
-              <KeyValue label="Phone" value={lead.phone ? <a className="inline-flex items-center gap-1.5 hover:text-primary" href={`tel:${lead.phone}`}><Phone className="h-3.5 w-3.5" aria-hidden />{lead.phone}</a> : null} />
+              <KeyValue label="Phone" value={lead.phone} />
+              <ContactActions phone={lead.normalizedPhone ?? lead.phone} />
               <KeyValue label="Email" value={lead.email ? <a className="inline-flex items-center gap-1.5 hover:text-primary" href={`mailto:${lead.email}`}><Mail className="h-3.5 w-3.5" aria-hidden />{lead.email}</a> : null} />
               <KeyValue label="Company" value={lead.companyName} />
               <KeyValue label="Created" value={formatDate(lead.createdAt, true)} />
             </dl>
           </Panel>
           <Panel title="Notes"><p className="whitespace-pre-wrap text-sm text-text-secondary">{lead.notes || "No notes yet."}</p></Panel>
+          {can(actor, PERMISSIONS.CRM_LEADS_UPDATE) && <FollowUpOutcome id={lead.id}/>}
           <Panel title="Activity timeline" description={`${activities.length} entr${activities.length === 1 ? "y" : "ies"}`}>
             {activities.length ? (
               <ol className="relative space-y-5 border-l border-border pl-5">

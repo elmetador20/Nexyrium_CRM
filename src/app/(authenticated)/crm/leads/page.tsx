@@ -1,3 +1,4 @@
+import {ContactActions} from "@/features/integrations/whatsapp/ContactActions";
 import Link from "next/link";
 import { FilterChip } from "@/components/nx/FilterChip";
 import { Plus, Upload, UserPlus } from "lucide-react";
@@ -69,7 +70,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       ) : (
         <TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
           <table className="data-table">
-            <thead><tr><th>Lead</th><th>Status</th><th>Department</th><th>Source</th><th>Owner</th><th>Next follow-up</th></tr></thead>
+            <thead><tr><th>Lead</th><th>Status</th><th>Department</th><th>Source</th><th>Ingestion</th><th>Owner</th><th>Next follow-up</th><th>Contact</th></tr></thead>
             <tbody>
               {result.items.map((lead) => (
                 <tr key={lead.id}>
@@ -79,9 +80,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </td>
                   <td><StatusBadge status={lead.status} /></td>
                   <td><DepartmentChip name={lead.departmentId ? labels.departments.get(lead.departmentId) : null} /></td>
-                  <td className="text-text-secondary">{"acquisitionSource" in lead && lead.acquisitionSource ? ACQUISITION_LABELS[lead.acquisitionSource as keyof typeof ACQUISITION_LABELS] ?? humanize(String(lead.acquisitionSource)) : humanize(lead.source)}</td>
+                  <td className="text-text-secondary">{"acquisitionSource" in lead && lead.acquisitionSource ? ACQUISITION_LABELS[lead.acquisitionSource as keyof typeof ACQUISITION_LABELS] ?? humanize(String(lead.acquisitionSource)) : "Unclassified"}</td>
+                  <td>{humanize(lead.source)}</td>
                   <td className="text-text-secondary">{label(labels.users, lead.ownerId)}</td>
                   <td className="text-text-secondary">{lead.nextActionAt ? <><span className="block text-text-primary">{lead.nextAction || "Follow up"}</span><span className="text-xs">{formatDate(lead.nextActionAt, true)}</span></> : "—"}</td>
+                  <td><ContactActions phone={lead.normalizedPhone ?? lead.phone}/></td>
                 </tr>
               ))}
             </tbody>

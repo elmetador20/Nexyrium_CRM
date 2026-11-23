@@ -24,7 +24,7 @@ type LeadFormValues = {
   nextActionAt?: string | null;
 };
 
-export function LeadFields({ endpoint, method, initial = {}, departments }: { departments: {id:string;name:string}[]; endpoint: string; method: "POST" | "PATCH"; initial?: LeadFormValues }) {
+export function LeadFields({ endpoint, method, initial = {}, departments, salespeople }: { salespeople: {id:string;name:string}[]; departments: {id:string;name:string}[]; endpoint: string; method: "POST" | "PATCH"; initial?: LeadFormValues }) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const intakeEventId = useRef<string | null>(null);
@@ -44,6 +44,7 @@ export function LeadFields({ endpoint, method, initial = {}, departments }: { de
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...payload,
+        ownerId: payload.ownerId || undefined,
         departmentId: payload.departmentId || undefined,
         email: payload.email || null,
         phone: payload.phone || null,
@@ -72,6 +73,7 @@ export function LeadFields({ endpoint, method, initial = {}, departments }: { de
 
   return (
     <form action={submit} className="space-y-6"><label className="block text-sm font-medium">Department<select className="input" name="departmentId" defaultValue={initial.departmentId ?? ""}><option value="">Use default department</option>{departments.map(option => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>
+      {salespeople.length > 0 && <label className="label">Assigned salesperson<select name="ownerId" className="input" defaultValue={salespeople.some(person=>person.id===initial.ownerId) ? initial.ownerId ?? "" : ""}><option value="">{method==="PATCH" ? "Keep current assignment" : "Default assignment"}</option>{salespeople.map(person=><option key={person.id} value={person.id}>{person.name}</option>)}</select></label>}
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="Lead name" name="contactName" required defaultValue={initial.contactName} />
         <Field label="Company" name="companyName" required={method === "POST"} defaultValue={initial.companyName ?? ""} />

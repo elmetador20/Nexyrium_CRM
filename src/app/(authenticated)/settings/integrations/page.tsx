@@ -1,3 +1,4 @@
+import {WhatsAppStatus} from "@/features/integrations/whatsapp/WhatsAppStatus";
 import Link from "next/link";
 import { ArrowRight, HardDrive, Megaphone } from "lucide-react";
 
@@ -49,6 +50,7 @@ export default async function IntegrationsPage() {
           </li>
         ))}
       </ul>
+      {can(actor, PERMISSIONS.SETTINGS_MANAGE) && <WhatsAppStatus/>}
     </section>
   );
 }

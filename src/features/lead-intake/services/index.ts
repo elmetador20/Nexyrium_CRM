@@ -14,6 +14,7 @@ import { duplicateResolutionSchema, leadIntakeSchema, type LeadIntakeInput } fro
 import type { LeadIntakeTransaction, LeadIntakeUnitOfWork } from "../queries";
 
 export type LeadIntakeResult = {
+  replayed?: boolean;
   eventId: string;
   outcome: "created" | "linked_existing" | "needs_review";
   leadId?: string;
@@ -158,7 +159,8 @@ async function runIngest(
       if (claim.event.payloadHash !== payloadHash) {
         throw new CrmError("CONFLICT", "This event ID was already used with different lead data.");
       }
-      return replayResult(claim.event, candidateLeadIds);
+      const replay = replayResult(claim.event, candidateLeadIds);
+      return input.eventId.startsWith("ycloud:") ? { ...replay, replayed: true } : replay;
     }
 
     const lockKeys = [
