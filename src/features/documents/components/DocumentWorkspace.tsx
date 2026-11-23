@@ -135,15 +135,15 @@ export function DocumentWorkspace({ initialDocuments, canUpload, uploadsReady, r
           <p className="flex flex-col items-center gap-2 p-10 text-center text-sm text-text-muted"><FileText className="h-6 w-6" aria-hidden />No accessible documents yet.</p>
         ) : (
           <div className="nx-scroll-x">
-            <table className="data-table">
+            <table className="data-table nx-record-list">
               <thead><tr><th>Title</th><th>Type</th><th>Size</th><th>Status</th><th>Access</th></tr></thead>
               <tbody>{documents.map((document) => (
                 <tr key={document.id}>
-                  <td><p className="font-medium text-text-primary">{document.title}</p><p className="text-xs text-text-muted">{document.originalFilename}</p></td>
-                  <td className="text-text-secondary">{document.mimeType === "application/pdf" ? "PDF" : document.mimeType.split("/").pop()?.toUpperCase()}</td>
-                  <td className="text-text-secondary">{formatBytes(document.sizeBytes)}</td>
-                  <td className="capitalize">{document.status}</td>
-                  <td>{document.status === "available" ? <a className="nx-link" href={document.contentUrl}>Download</a> : "—"}</td>
+                  <td data-label="Title"><p className="font-medium text-text-primary">{document.title}</p><p className="text-xs text-text-muted">{document.originalFilename}</p></td>
+                  <td data-label="Type" className="text-text-secondary">{document.mimeType === "application/pdf" ? "PDF" : document.mimeType.split("/").pop()?.toUpperCase()}</td>
+                  <td data-label="Size" className="text-text-secondary">{formatBytes(document.sizeBytes)}</td>
+                  <td data-label="Status" className="capitalize">{document.status}</td>
+                  <td data-label="Access">{document.status === "available" ? <a className="nx-link" href={document.contentUrl}>Download</a> : "—"}</td>
                 </tr>
               ))}</tbody>
             </table>

@@ -56,18 +56,18 @@ export default async function ActivitiesPage({ searchParams }: { searchParams: P
       </FilterBar>
       {rows.length ? (
         <TableCard footer={<Pager page={page} pages={Math.ceil(Number(total) / PAGE_SIZE)} total={Number(total)} href={href} />}>
-          <table className="data-table">
+          <table className="data-table nx-record-list">
             <thead><tr><th>When</th><th>Who</th><th>Activity</th><th>Record</th><th>Outcome</th></tr></thead>
             <tbody>
               {rows.map((row) => {
                 const link = row.resourceId && RESOURCE_LINKS[row.resourceType] ? RESOURCE_LINKS[row.resourceType](row.resourceId) : null;
                 return (
                   <tr key={row.id}>
-                    <td className="whitespace-nowrap text-text-secondary">{formatDate(row.createdAt, true)}</td>
-                    <td className="font-medium text-text-primary">{row.actorName || row.actorEmail || (row.actorId ? "Former teammate" : "System")}</td>
-                    <td className="text-text-secondary">{describe(row.action)}</td>
-                    <td>{link ? <Link className="nx-link" href={link}>Open {humanize(row.resourceType).toLowerCase()}</Link> : <span className="text-text-muted">{humanize(row.resourceType)}</span>}</td>
-                    <td><StatusBadge status={row.outcome} /></td>
+                    <td data-label="When" className="whitespace-nowrap text-text-secondary">{formatDate(row.createdAt, true)}</td>
+                    <td data-label="Who" className="font-medium text-text-primary">{row.actorName || row.actorEmail || (row.actorId ? "Former teammate" : "System")}</td>
+                    <td data-label="Activity" className="text-text-secondary">{describe(row.action)}</td>
+                    <td data-label="Record">{link ? <Link className="nx-link" href={link}>Open {humanize(row.resourceType).toLowerCase()}</Link> : <span className="text-text-muted">{humanize(row.resourceType)}</span>}</td>
+                    <td data-label="Outcome"><StatusBadge status={row.outcome} /></td>
                   </tr>
                 );
               })}

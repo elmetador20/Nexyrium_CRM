@@ -78,3 +78,45 @@
   form.leads-mobile-only { display: grid; }
   .leads-desktop-only { display: none; }
 }
+
+@media (max-width: 63.999rem) {
+  nav[aria-label="Main"] { overscroll-behavior-y: contain; }
+  nav[aria-label="Main"] a { min-height: 2.75rem; }
+  aside:has(nav[aria-label="Main"]) {
+    padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+  }
+  #main-content :is(.nx-scroll-x, .table-container) { overscroll-behavior-x: contain; }
+  .nx-scroll-x:has(> .grid-cols-6 > [id]) { scroll-snap-type: x proximity; scroll-padding-inline: 1rem; }
+  .nx-scroll-x > .grid-cols-6:has(> [id]) {
+    width: max-content;
+    grid-template-columns: repeat(6, min(80vw, 19rem));
+  }
+  .nx-scroll-x > .grid-cols-6 > [id] { scroll-snap-align: start; }
+}
+
+@media (max-width: 39.999rem) {
+  header:has(form[role="search"]) { padding-top: env(safe-area-inset-top); }
+  button[aria-label="Open navigation"] { top: calc(.625rem + env(safe-area-inset-top)); min-width: 44px; min-height: 44px; }
+  header a[aria-label^="Notifications"] { padding-inline: .5rem; justify-content: center; }
+  header a[aria-label^="Notifications"] > span { position: absolute; top: -.25rem; right: -.25rem; }
+  header [role="menu"] { max-height: 70dvh; overflow-y: auto; }
+  header [role="menuitem"] { min-height: 44px; }
+  #main-content :is(form, fieldset, label, .panel, .card) { min-width: 0; }
+  #main-content :is(.panel, .card, .nx-hero) { overflow-wrap: anywhere; }
+  #main-content :is(.input, input[type="file"], iframe) { max-width: 100%; min-width: 0; }
+  #main-content :is(.button-primary, .button-secondary, .btn, select.input) { min-height: 44px; }
+  .nx-record-list, .nx-record-list tbody { display: block; width: 100%; min-width: 0; }
+  .nx-record-list thead { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
+  .nx-record-list tbody tr { display: grid; gap: .375rem; padding: .875rem; background: var(--color-surface); }
+  .nx-record-list tbody tr + tr { border-top: 1px solid var(--color-border); }
+  .nx-record-list tbody td, .nx-record-list tbody td:first-child {
+    position: static; display: block; padding: 0; min-width: 0; max-width: none;
+    white-space: normal; text-align: start; border: 0; box-shadow: none; overflow-wrap: anywhere;
+  }
+  .nx-record-list tbody td:not(:first-child) {
+    display: grid; grid-template-columns: minmax(5rem, 30%) minmax(0,1fr); align-items: baseline; justify-items: start; gap: .5rem;
+  }
+  .nx-record-list td:not(:first-child)::before { content: attr(data-label); color: var(--color-text-muted); font-size: .8125rem; }
+  .nx-record-list tbody td:first-child { margin-bottom: .25rem; font-weight: 600; }
+  .nx-record-list tbody td:first-child :is(p,.text-xs) { white-space: normal; overflow: visible; }
+}

@@ -54,7 +54,7 @@ export async function InvoiceListPage({ status, page = 1, clientId }: { status?:
           action={canCreate ? <Link className="button-primary px-4 py-2 text-sm" href="/finance/invoices/new">Create invoice</Link> : undefined} />
       ) : (
         <TableCard footer={<Pager page={page} pages={Math.ceil(result.total / PAGE_SIZE)} total={result.total} href={(p) => href({ page: p })} />}>
-          <table className="data-table">
+          <table className="data-table nx-record-list">
             <thead><tr><th>Invoice</th><th>Client</th><th>Status</th><th className="text-right">Total</th><th className="text-right">Balance due</th><th>Due date</th></tr></thead>
             <tbody>
               {result.items.map((invoice) => {
@@ -63,12 +63,12 @@ export async function InvoiceListPage({ status, page = 1, clientId }: { status?:
                 const late = open && invoice.dueDate !== null && invoice.dueDate < today;
                 return (
                   <tr key={invoice.id}>
-                    <td><Link className="nx-link" href={`/finance/invoices/${invoice.id}`}>{invoice.invoiceNumber ?? "Draft"}</Link><p className="max-w-64 truncate text-xs text-text-muted">{invoice.title}</p></td>
-                    <td><span className="font-medium text-text-primary">{invoice.clientName ?? "—"}</span>{invoice.clientCompanyName ? <p className="text-xs text-text-muted">{invoice.clientCompanyName}</p> : null}</td>
-                    <td>{late ? <StatusBadge status="overdue" /> : <StatusBadge status={invoice.status} />}</td>
-                    <td className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(invoice.totalMinor, invoice.currencyCode)}</td>
-                    <td className={cn("whitespace-nowrap text-right tabular-nums", late ? "font-semibold text-danger" : "text-text-secondary")}>{open ? formatMinor(balanceDue, invoice.currencyCode) : "—"}</td>
-                    <td className={cn("whitespace-nowrap", late ? "text-danger" : "text-text-secondary")}>{formatDate(invoice.dueDate)}</td>
+                    <td data-label="Invoice"><Link className="nx-link" href={`/finance/invoices/${invoice.id}`}>{invoice.invoiceNumber ?? "Draft"}</Link><p className="max-w-64 truncate text-xs text-text-muted">{invoice.title}</p></td>
+                    <td data-label="Client"><span className="font-medium text-text-primary">{invoice.clientName ?? "—"}</span>{invoice.clientCompanyName ? <p className="text-xs text-text-muted">{invoice.clientCompanyName}</p> : null}</td>
+                    <td data-label="Status">{late ? <StatusBadge status="overdue" /> : <StatusBadge status={invoice.status} />}</td>
+                    <td data-label="Total" className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(invoice.totalMinor, invoice.currencyCode)}</td>
+                    <td data-label="Balance due" className={cn("whitespace-nowrap text-right tabular-nums", late ? "font-semibold text-danger" : "text-text-secondary")}>{open ? formatMinor(balanceDue, invoice.currencyCode) : "—"}</td>
+                    <td data-label="Due date" className={cn("whitespace-nowrap", late ? "text-danger" : "text-text-secondary")}>{formatDate(invoice.dueDate)}</td>
                   </tr>
                 );
               })}

@@ -42,22 +42,22 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         <EmptyState icon={<Building2 className="h-5 w-5" />} title="No clients found" description="Add a client or convert a qualified lead to start building relationships." action={canCreate ? <Link href="/crm/clients/new" className="button-primary px-4 py-2 text-sm">New client</Link> : undefined} />
       ) : (
         <TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
-          <table className="data-table">
+          <table className="data-table nx-record-list">
             <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Department</th><th>Owner</th><th>Since</th></tr></thead>
             <tbody>
               {result.items.map((client) => (
                 <tr key={client.id}>
-                  <td>
+                  <td data-label="Client">
                     <div className="flex items-center gap-3">
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-light text-xs font-semibold text-primary" aria-hidden>{client.name.slice(0, 2).toUpperCase()}</span>
                       <span className="min-w-0"><Link href={`/crm/clients/${client.id}`} className="nx-link">{client.name}</Link><span className="block truncate text-xs text-text-muted">{client.companyName ?? "—"}</span></span>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap text-text-secondary">{client.phone ? <a href={`tel:${client.phone}`} className="hover:text-primary">{client.phone}</a> : "—"}</td>
-                  <td className="text-text-secondary">{client.email ? <a href={`mailto:${client.email}`} className="hover:text-primary">{client.email}</a> : "—"}</td>
-                  <td><DepartmentChip name={client.departmentId ? labels.departments.get(client.departmentId) : null} /></td>
-                  <td className="text-text-secondary">{client.ownerName ?? "Unassigned"}</td>
-                  <td className="whitespace-nowrap text-text-secondary">{formatDate(client.createdAt)}</td>
+                  <td data-label="Phone" className="whitespace-nowrap text-text-secondary">{client.phone ? <a href={`tel:${client.phone}`} className="hover:text-primary">{client.phone}</a> : "—"}</td>
+                  <td data-label="Email" className="text-text-secondary">{client.email ? <a href={`mailto:${client.email}`} className="hover:text-primary">{client.email}</a> : "—"}</td>
+                  <td data-label="Department"><DepartmentChip name={client.departmentId ? labels.departments.get(client.departmentId) : null} /></td>
+                  <td data-label="Owner" className="text-text-secondary">{client.ownerName ?? "Unassigned"}</td>
+                  <td data-label="Since" className="whitespace-nowrap text-text-secondary">{formatDate(client.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

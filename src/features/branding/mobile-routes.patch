@@ -1,0 +1,165 @@
+diff --git a/src/app/(authenticated)/crm/clients/page.tsx b/src/app/(authenticated)/crm/clients/page.tsx
+index 2039fd0..b2e5ed8 100644
+--- a/src/app/(authenticated)/crm/clients/page.tsx
++++ b/src/app/(authenticated)/crm/clients/page.tsx
+@@ -42,22 +42,22 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
+         <EmptyState icon={<Building2 className="h-5 w-5" />} title="No clients found" description="Add a client or convert a qualified lead to start building relationships." action={canCreate ? <Link href="/crm/clients/new" className="button-primary px-4 py-2 text-sm">New client</Link> : undefined} />
+       ) : (
+         <TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
+-          <table className="data-table">
++          <table className="data-table nx-record-list">
+             <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Department</th><th>Owner</th><th>Since</th></tr></thead>
+             <tbody>
+               {result.items.map((client) => (
+                 <tr key={client.id}>
+-                  <td>
++                  <td data-label="Client">
+                     <div className="flex items-center gap-3">
+                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary-light text-xs font-semibold text-primary" aria-hidden>{client.name.slice(0, 2).toUpperCase()}</span>
+                       <span className="min-w-0"><Link href={`/crm/clients/${client.id}`} className="nx-link">{client.name}</Link><span className="block truncate text-xs text-text-muted">{client.companyName ?? "—"}</span></span>
+                     </div>
+                   </td>
+-                  <td className="whitespace-nowrap text-text-secondary">{client.phone ? <a href={`tel:${client.phone}`} className="hover:text-primary">{client.phone}</a> : "—"}</td>
+-                  <td className="text-text-secondary">{client.email ? <a href={`mailto:${client.email}`} className="hover:text-primary">{client.email}</a> : "—"}</td>
+-                  <td><DepartmentChip name={client.departmentId ? labels.departments.get(client.departmentId) : null} /></td>
+-                  <td className="text-text-secondary">{client.ownerName ?? "Unassigned"}</td>
+-                  <td className="whitespace-nowrap text-text-secondary">{formatDate(client.createdAt)}</td>
++                  <td data-label="Phone" className="whitespace-nowrap text-text-secondary">{client.phone ? <a href={`tel:${client.phone}`} className="hover:text-primary">{client.phone}</a> : "—"}</td>
++                  <td data-label="Email" className="text-text-secondary">{client.email ? <a href={`mailto:${client.email}`} className="hover:text-primary">{client.email}</a> : "—"}</td>
++                  <td data-label="Department"><DepartmentChip name={client.departmentId ? labels.departments.get(client.departmentId) : null} /></td>
++                  <td data-label="Owner" className="text-text-secondary">{client.ownerName ?? "Unassigned"}</td>
++                  <td data-label="Since" className="whitespace-nowrap text-text-secondary">{formatDate(client.createdAt)}</td>
+                 </tr>
+               ))}
+             </tbody>
+diff --git a/src/app/(authenticated)/crm/deals/page.tsx b/src/app/(authenticated)/crm/deals/page.tsx
+index 2d5e392..ebaa381 100644
+--- a/src/app/(authenticated)/crm/deals/page.tsx
++++ b/src/app/(authenticated)/crm/deals/page.tsx
+@@ -55,17 +55,17 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
+         <EmptyState icon={<Handshake className="h-5 w-5" />} title="No deals found" description="Create a deal or adjust the filters." action={canCreate ? <Link href="/crm/deals/new" className="button-primary px-4 py-2 text-sm">New deal</Link> : undefined} />
+       ) : (
+         <TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
+-          <table className="data-table">
++          <table className="data-table nx-record-list">
+             <thead><tr><th>Deal</th><th>Stage</th><th className="text-right">Value</th><th>Department</th><th>Owner</th><th>Expected close</th></tr></thead>
+             <tbody>
+               {result.items.map((deal) => (
+                 <tr key={deal.id}>
+-                  <td><Link href={`/crm/deals/${deal.id}`} className="nx-link">{deal.title}</Link><p className="text-xs text-text-muted">{deal.clientId ? label(labels.clients, deal.clientId) : "No client linked"}</p></td>
+-                  <td><StatusBadge status={deal.stage} /></td>
+-                  <td className="whitespace-nowrap text-right font-medium tabular-nums">{formatMajor(deal.expectedValue, deal.currency)}</td>
+-                  <td><DepartmentChip name={deal.departmentId ? labels.departments.get(deal.departmentId) : null} /></td>
+-                  <td className="text-text-secondary">{label(labels.users, deal.ownerId)}</td>
+-                  <td className="whitespace-nowrap text-text-secondary">{formatDate(deal.expectedCloseDate)}</td>
++                  <td data-label="Deal"><Link href={`/crm/deals/${deal.id}`} className="nx-link">{deal.title}</Link><p className="text-xs text-text-muted">{deal.clientId ? label(labels.clients, deal.clientId) : "No client linked"}</p></td>
++                  <td data-label="Stage"><StatusBadge status={deal.stage} /></td>
++                  <td data-label="Value" className="whitespace-nowrap text-right font-medium tabular-nums">{formatMajor(deal.expectedValue, deal.currency)}</td>
++                  <td data-label="Department"><DepartmentChip name={deal.departmentId ? labels.departments.get(deal.departmentId) : null} /></td>
++                  <td data-label="Owner" className="text-text-secondary">{label(labels.users, deal.ownerId)}</td>
++                  <td data-label="Expected close" className="whitespace-nowrap text-text-secondary">{formatDate(deal.expectedCloseDate)}</td>
+                 </tr>
+               ))}
+             </tbody>
+diff --git a/src/app/(authenticated)/expenses/page.tsx b/src/app/(authenticated)/expenses/page.tsx
+index f9b47c9..aa88bbc 100644
+--- a/src/app/(authenticated)/expenses/page.tsx
++++ b/src/app/(authenticated)/expenses/page.tsx
+@@ -51,17 +51,17 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
+         <EmptyState icon={<ReceiptText className="h-5 w-5" />} title="No expenses found" description="Record an expense to track spending by department." action={can(actor, PERMISSIONS.EXPENSES_CREATE) ? <Link className="button-primary px-4 py-2 text-sm" href="/expenses/new">New expense</Link> : undefined} />
+       ) : (
+         <TableCard footer={<Pager page={page} pages={Math.ceil(result.total / PAGE_SIZE)} total={result.total} href={link} />}>
+-          <table className="data-table">
++          <table className="data-table nx-record-list">
+             <thead><tr><th>Date</th><th>Expense</th><th>Category</th><th>Department</th><th>Status</th><th className="text-right">Amount</th></tr></thead>
+             <tbody>
+               {result.items.map((expense) => (
+                 <tr key={expense.id}>
+-                  <td className="whitespace-nowrap text-text-secondary">{formatDate(expense.incurredOn)}</td>
+-                  <td><Link className="nx-link" href={`/expenses/${expense.id}`}>{expense.description}</Link>{expense.merchantName ? <p className="text-xs text-text-muted">{expense.merchantName}</p> : null}</td>
+-                  <td className="text-text-secondary">{expense.category}</td>
+-                  <td><DepartmentChip name={expense.departmentId ? labels.departments.get(expense.departmentId) : null} /></td>
+-                  <td><StatusBadge status={expense.status} /></td>
+-                  <td className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(expense.amountMinor, expense.currencyCode)}</td>
++                  <td data-label="Date" className="whitespace-nowrap text-text-secondary">{formatDate(expense.incurredOn)}</td>
++                  <td data-label="Expense"><Link className="nx-link" href={`/expenses/${expense.id}`}>{expense.description}</Link>{expense.merchantName ? <p className="text-xs text-text-muted">{expense.merchantName}</p> : null}</td>
++                  <td data-label="Category" className="text-text-secondary">{expense.category}</td>
++                  <td data-label="Department"><DepartmentChip name={expense.departmentId ? labels.departments.get(expense.departmentId) : null} /></td>
++                  <td data-label="Status"><StatusBadge status={expense.status} /></td>
++                  <td data-label="Amount" className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(expense.amountMinor, expense.currencyCode)}</td>
+                 </tr>
+               ))}
+             </tbody>
+diff --git a/src/app/(authenticated)/people/page.tsx b/src/app/(authenticated)/people/page.tsx
+index c799cd9..3d4c15a 100644
+--- a/src/app/(authenticated)/people/page.tsx
++++ b/src/app/(authenticated)/people/page.tsx
+@@ -7,4 +7,4 @@ import { PERMISSIONS } from "@/lib/authorization/permissions";
+ import { requirePagePermission } from "@/lib/authorization/server";
+ 
+ export const instant = false;
+-export default async function PeoplePage() { const actor = await requirePagePermission(PERMISSIONS.PEOPLE_READ); const result = await peopleService.list(actor, { page: 1, pageSize: 100 }); return <section><div className="mb-5"><p className="text-sm text-text-muted">People directory</p><h1 className="mt-1 text-2xl font-semibold">People</h1><p className="mt-2 text-sm text-text-muted">Directory fields only. Payroll, compensation, addresses, and other sensitive HR data are intentionally not stored here.</p></div>{can(actor, PERMISSIONS.REPORTS_READ) && <Link className="button-secondary" href="/targets">Monthly targets</Link>}<TeamInvitations actor={actor}/>{result.items.length ? <div className="overflow-x-auto rounded-xl border bg-surface"><table className="data-table"><thead><tr><th>Name</th><th>Work email</th><th>Job title</th><th>Status</th><th>Departments</th><th>Roles</th></tr></thead><tbody>{result.items.map((person) => <tr key={person.id}><td><Link className="font-medium underline" href={`/people/${person.id}`}>{person.name?.trim() || person.email.split("@")[0]}</Link>{person.name?.trim() ? null : <span className="ml-2 text-xs text-text-muted">name not set</span>}</td><td>{person.email}</td><td>{person.profile.jobTitle ?? "—"}</td><td className="capitalize">{person.profile.employmentStatus.replaceAll("_", " ")}</td><td>{person.departments.map((department) => department.name).join(", ") || "—"}</td><td>{person.roles.map((role) => role.name).join(", ") || "—"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-text-muted">No people records are visible in your scope.</p>}</section>; }
++export default async function PeoplePage() { const actor = await requirePagePermission(PERMISSIONS.PEOPLE_READ); const result = await peopleService.list(actor, { page: 1, pageSize: 100 }); return <section><div className="mb-5"><p className="text-sm text-text-muted">People directory</p><h1 className="mt-1 text-2xl font-semibold">People</h1><p className="mt-2 text-sm text-text-muted">Directory fields only. Payroll, compensation, addresses, and other sensitive HR data are intentionally not stored here.</p></div>{can(actor, PERMISSIONS.REPORTS_READ) && <Link className="button-secondary" href="/targets">Monthly targets</Link>}<TeamInvitations actor={actor}/>{result.items.length ? <div className="overflow-x-auto rounded-xl border bg-surface"><table className="data-table nx-record-list"><thead><tr><th>Name</th><th>Work email</th><th>Job title</th><th>Status</th><th>Departments</th><th>Roles</th></tr></thead><tbody>{result.items.map((person) => <tr key={person.id}><td data-label="Name"><Link className="font-medium underline" href={`/people/${person.id}`}>{person.name?.trim() || person.email.split("@")[0]}</Link>{person.name?.trim() ? null : <span className="ml-2 text-xs text-text-muted">name not set</span>}</td><td data-label="Work email">{person.email}</td><td data-label="Job title">{person.profile.jobTitle ?? "—"}</td><td data-label="Status" className="capitalize">{person.profile.employmentStatus.replaceAll("_", " ")}</td><td data-label="Departments">{person.departments.map((department) => department.name).join(", ") || "—"}</td><td data-label="Roles">{person.roles.map((role) => role.name).join(", ") || "—"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-text-muted">No people records are visible in your scope.</p>}</section>; }
+diff --git a/src/app/(authenticated)/targets/page.tsx b/src/app/(authenticated)/targets/page.tsx
+index 0c15802..0a6d8aa 100644
+--- a/src/app/(authenticated)/targets/page.tsx
++++ b/src/app/(authenticated)/targets/page.tsx
+@@ -5,4 +5,4 @@ import { can } from "@/lib/authorization/policy";
+ import { requirePagePermission } from "@/lib/authorization/server";
+ 
+ export const instant = false;
+-export default async function TargetsPage() { const actor = await requirePagePermission(PERMISSIONS.REPORTS_READ); const targets = await targetService.list(actor, {}); return <section className="space-y-6"><div><p className="text-sm text-text-muted">Configurable departmental goals</p><h1 className="mt-1 text-2xl font-semibold">Targets</h1><p className="mt-2 text-sm text-text-muted">Targets are goals, not actual revenue. Actuals are calculated in reports from authorized records.</p></div>{targets.length ? <div className="overflow-x-auto rounded-xl border bg-surface"><table className="data-table"><thead><tr><th>Department ID</th><th>Metric</th><th>Period</th><th>Target</th><th>Currency</th></tr></thead><tbody>{targets.map((target) => <tr key={target.id}><td>{target.departmentId}</td><td>{target.metricKey}</td><td>{target.periodStart} – {target.periodEnd}</td><td>{target.targetMinor ?? target.targetCount}</td><td>{target.currencyCode ?? "count"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-text-muted">No targets are configured for the selected scope.</p>}{can(actor, PERMISSIONS.REPORTS_MANAGE) ? <div className="panel"><h2 className="text-lg font-semibold">Add target</h2><p className="mt-1 text-sm text-text-muted">Use one complete calendar month. Amounts use integer minor units.</p><div className="mt-5"><TargetForm /></div></div> : null}</section>; }
++export default async function TargetsPage() { const actor = await requirePagePermission(PERMISSIONS.REPORTS_READ); const targets = await targetService.list(actor, {}); return <section className="space-y-6"><div><p className="text-sm text-text-muted">Configurable departmental goals</p><h1 className="mt-1 text-2xl font-semibold">Targets</h1><p className="mt-2 text-sm text-text-muted">Targets are goals, not actual revenue. Actuals are calculated in reports from authorized records.</p></div>{targets.length ? <div className="overflow-x-auto rounded-xl border bg-surface"><table className="data-table nx-record-list"><thead><tr><th>Department ID</th><th>Metric</th><th>Period</th><th>Target</th><th>Currency</th></tr></thead><tbody>{targets.map((target) => <tr key={target.id}><td data-label="Department ID">{target.departmentId}</td><td data-label="Metric">{target.metricKey}</td><td data-label="Period">{target.periodStart} – {target.periodEnd}</td><td data-label="Target">{target.targetMinor ?? target.targetCount}</td><td data-label="Currency">{target.currencyCode ?? "count"}</td></tr>)}</tbody></table></div> : <p className="panel text-sm text-text-muted">No targets are configured for the selected scope.</p>}{can(actor, PERMISSIONS.REPORTS_MANAGE) ? <div className="panel"><h2 className="text-lg font-semibold">Add target</h2><p className="mt-1 text-sm text-text-muted">Use one complete calendar month. Amounts use integer minor units.</p><div className="mt-5"><TargetForm /></div></div> : null}</section>; }
+diff --git a/src/app/(authenticated)/activities/page.tsx b/src/app/(authenticated)/activities/page.tsx
+index 57ed120..beb761c 100644
+--- a/src/app/(authenticated)/activities/page.tsx
++++ b/src/app/(authenticated)/activities/page.tsx
+@@ -56,18 +56,18 @@ export default async function ActivitiesPage({ searchParams }: { searchParams: P
+       </FilterBar>
+       {rows.length ? (
+         <TableCard footer={<Pager page={page} pages={Math.ceil(Number(total) / PAGE_SIZE)} total={Number(total)} href={href} />}>
+-          <table className="data-table">
++          <table className="data-table nx-record-list">
+             <thead><tr><th>When</th><th>Who</th><th>Activity</th><th>Record</th><th>Outcome</th></tr></thead>
+             <tbody>
+               {rows.map((row) => {
+                 const link = row.resourceId && RESOURCE_LINKS[row.resourceType] ? RESOURCE_LINKS[row.resourceType](row.resourceId) : null;
+                 return (
+                   <tr key={row.id}>
+-                    <td className="whitespace-nowrap text-text-secondary">{formatDate(row.createdAt, true)}</td>
+-                    <td className="font-medium text-text-primary">{row.actorName || row.actorEmail || (row.actorId ? "Former teammate" : "System")}</td>
+-                    <td className="text-text-secondary">{describe(row.action)}</td>
+-                    <td>{link ? <Link className="nx-link" href={link}>Open {humanize(row.resourceType).toLowerCase()}</Link> : <span className="text-text-muted">{humanize(row.resourceType)}</span>}</td>
+-                    <td><StatusBadge status={row.outcome} /></td>
++                    <td data-label="When" className="whitespace-nowrap text-text-secondary">{formatDate(row.createdAt, true)}</td>
++                    <td data-label="Who" className="font-medium text-text-primary">{row.actorName || row.actorEmail || (row.actorId ? "Former teammate" : "System")}</td>
++                    <td data-label="Activity" className="text-text-secondary">{describe(row.action)}</td>
++                    <td data-label="Record">{link ? <Link className="nx-link" href={link}>Open {humanize(row.resourceType).toLowerCase()}</Link> : <span className="text-text-muted">{humanize(row.resourceType)}</span>}</td>
++                    <td data-label="Outcome"><StatusBadge status={row.outcome} /></td>
+                   </tr>
+                 );
+               })}
+diff --git a/src/app/(authenticated)/projects/page.tsx b/src/app/(authenticated)/projects/page.tsx
+index 2603c82..925534c 100644
+--- a/src/app/(authenticated)/projects/page.tsx
++++ b/src/app/(authenticated)/projects/page.tsx
+@@ -15,7 +15,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
+   const page = typeof params.page === "string" ? params.page : "1";
+   const result = await getProjectService().list(actor, { search, status, page, pageSize: 20 });
+   const labels = await resolveLabels({ users: result.items.map((project) => project.ownerId) });
+-  return <section><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-text-muted">Delivery work</p><h2 className="mt-1 text-2xl font-semibold">Projects</h2><p className="mt-1 text-sm text-text-muted">{result.total} accessible projects</p></div><div className="flex gap-2"><Link href="/tasks" className="button-secondary">Task board</Link><Link href="/projects/new" className="button-primary">New project</Link></div></div><form className="mb-5 grid gap-3 rounded-xl border border-border bg-surface p-4 md:grid-cols-[1fr_180px_auto]"><input className="input mt-0" name="search" defaultValue={search} placeholder="Search projects" /><select className="input mt-0" name="status" defaultValue={status ?? ""}><option value="">All statuses</option><option value="planned">Planned</option><option value="active">Active</option><option value="on_hold">On hold</option><option value="completed">Completed</option><option value="canceled">Canceled</option></select><button className="button-secondary" type="submit">Filter</button></form>{result.items.length === 0 ? <div className="rounded-xl border border-dashed border-border-strong p-12 text-center text-sm text-text-muted">No projects found.</div> : <div className="overflow-hidden rounded-xl border border-border bg-surface"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b border-border text-xs uppercase text-text-muted"><tr><th className="px-4 py-3">Project</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3">Due</th></tr></thead><tbody>{result.items.map((project) => <tr key={project.id} className="border-b border-border last:border-0"><td className="px-4 py-4"><Link className="font-medium hover:underline" href={`/projects/${project.id}`}>{project.name}</Link><p className="mt-1 max-w-md truncate text-xs text-text-muted">{project.description ?? "No description"}</p></td><td className="px-4 py-4 capitalize">{project.status.replace("_", " ")}</td><td className="px-4 py-4 text-text-secondary">{label(labels.users, project.ownerId)}</td><td className="px-4 py-4 text-text-secondary">{project.dueDate ?? "—"}</td></tr>)}</tbody></table></div><Pagination page={Number(page)} total={result.total} search={search} status={status} /></div>}</section>;
++  return <section><div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-medium text-text-muted">Delivery work</p><h2 className="mt-1 text-2xl font-semibold">Projects</h2><p className="mt-1 text-sm text-text-muted">{result.total} accessible projects</p></div><div className="flex gap-2"><Link href="/tasks" className="button-secondary">Task board</Link><Link href="/projects/new" className="button-primary">New project</Link></div></div><form className="mb-5 grid gap-3 rounded-xl border border-border bg-surface p-4 md:grid-cols-[1fr_180px_auto]"><input className="input mt-0" name="search" defaultValue={search} placeholder="Search projects" /><select className="input mt-0" name="status" defaultValue={status ?? ""}><option value="">All statuses</option><option value="planned">Planned</option><option value="active">Active</option><option value="on_hold">On hold</option><option value="completed">Completed</option><option value="canceled">Canceled</option></select><button className="button-secondary" type="submit">Filter</button></form>{result.items.length === 0 ? <div className="rounded-xl border border-dashed border-border-strong p-12 text-center text-sm text-text-muted">No projects found.</div> : <div className="overflow-hidden rounded-xl border border-border bg-surface"><div className="overflow-x-auto"><table className="nx-record-list w-full text-left text-sm"><thead className="border-b border-border text-xs uppercase text-text-muted"><tr><th className="px-4 py-3">Project</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3">Due</th></tr></thead><tbody>{result.items.map((project) => <tr key={project.id} className="border-b border-border last:border-0"><td data-label="Project" className="px-4 py-4"><Link className="font-medium hover:underline" href={`/projects/${project.id}`}>{project.name}</Link><p className="mt-1 max-w-md truncate text-xs text-text-muted">{project.description ?? "No description"}</p></td><td data-label="Status" className="px-4 py-4 capitalize">{project.status.replace("_", " ")}</td><td data-label="Owner" className="px-4 py-4 text-text-secondary">{label(labels.users, project.ownerId)}</td><td data-label="Due" className="px-4 py-4 text-text-secondary">{project.dueDate ?? "—"}</td></tr>)}</tbody></table></div><Pagination page={Number(page)} total={result.total} search={search} status={status} /></div>}</section>;
+ }
+ 
+ function Pagination({ page, total, search, status }: { page: number; total: number; search?: string; status?: string }) { const pages = Math.ceil(total / 20); if (pages <= 1) return null; const link = (value: number) => { const params = new URLSearchParams({ page: String(value) }); if (search) params.set("search", search); if (status) params.set("status", status); return `/projects?${params}`; }; return <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm"><span>Page {page} of {pages}</span><div className="flex gap-2">{page > 1 ? <Link className="button-secondary" href={link(page - 1)}>Previous</Link> : null}{page < pages ? <Link className="button-secondary" href={link(page + 1)}>Next</Link> : null}</div></div>; }
+diff --git a/src/app/(authenticated)/quotations/page.tsx b/src/app/(authenticated)/quotations/page.tsx
+index 23425ae..149c019 100644
+--- a/src/app/(authenticated)/quotations/page.tsx
++++ b/src/app/(authenticated)/quotations/page.tsx
+@@ -11,5 +11,5 @@ export default async function QuotationsPage() {
+   const actor = await requirePagePermission(PERMISSIONS.QUOTATIONS_READ);
+   const result = await quotationService.list(actor, { page: 1, pageSize: 50 });
+ 
+-  return <section><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-medium text-text-muted">Commercial documents</p><h1 className="mt-1 text-2xl font-semibold text-text-primary">Quotations</h1><p className="mt-1 text-sm text-text-secondary">Prepare, submit, and approve client quotations.</p></div><Link className="button-primary" href="/quotations/new">New quotation</Link></div>{result.items.length === 0 ? <div className="card border-dashed p-10 text-center"><h2 className="font-semibold text-text-primary">No quotations yet</h2><p className="mt-2 text-sm text-text-secondary">Create a quotation to begin a client proposal.</p><Link className="button-primary mt-5" href="/quotations/new">Create quotation</Link></div> : <div className="table-container bg-surface"><table className="table"><thead><tr><th>Number</th><th>Title</th><th>Status</th><th>Total</th></tr></thead><tbody>{result.items.map((quote) => <tr key={quote.id}><td><Link className="font-medium text-primary hover:underline" href={`/quotations/${quote.id}`}>{quote.quotationNumber ?? "Draft"}</Link></td><td>{quote.title}</td><td className="capitalize">{quote.status}</td><td className="whitespace-nowrap font-medium">{formatMoney(quote.totalMinor, quote.currencyCode)}</td></tr>)}</tbody></table></div>}</section>;
++  return <section><div className="mb-6 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-medium text-text-muted">Commercial documents</p><h1 className="mt-1 text-2xl font-semibold text-text-primary">Quotations</h1><p className="mt-1 text-sm text-text-secondary">Prepare, submit, and approve client quotations.</p></div><Link className="button-primary" href="/quotations/new">New quotation</Link></div>{result.items.length === 0 ? <div className="card border-dashed p-10 text-center"><h2 className="font-semibold text-text-primary">No quotations yet</h2><p className="mt-2 text-sm text-text-secondary">Create a quotation to begin a client proposal.</p><Link className="button-primary mt-5" href="/quotations/new">Create quotation</Link></div> : <div className="table-container bg-surface"><table className="nx-record-list table"><thead><tr><th>Number</th><th>Title</th><th>Status</th><th>Total</th></tr></thead><tbody>{result.items.map((quote) => <tr key={quote.id}><td data-label="Number"><Link className="font-medium text-primary hover:underline" href={`/quotations/${quote.id}`}>{quote.quotationNumber ?? "Draft"}</Link></td><td data-label="Title">{quote.title}</td><td data-label="Status" className="capitalize">{quote.status}</td><td data-label="Total" className="whitespace-nowrap font-medium">{formatMoney(quote.totalMinor, quote.currencyCode)}</td></tr>)}</tbody></table></div>}</section>;
+ }

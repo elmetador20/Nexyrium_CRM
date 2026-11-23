@@ -55,17 +55,17 @@ export default async function DealsPage({ searchParams }: { searchParams: Promis
         <EmptyState icon={<Handshake className="h-5 w-5" />} title="No deals found" description="Create a deal or adjust the filters." action={canCreate ? <Link href="/crm/deals/new" className="button-primary px-4 py-2 text-sm">New deal</Link> : undefined} />
       ) : (
         <TableCard footer={<Pager page={page} pages={pages} total={result.total} href={href} />}>
-          <table className="data-table">
+          <table className="data-table nx-record-list">
             <thead><tr><th>Deal</th><th>Stage</th><th className="text-right">Value</th><th>Department</th><th>Owner</th><th>Expected close</th></tr></thead>
             <tbody>
               {result.items.map((deal) => (
                 <tr key={deal.id}>
-                  <td><Link href={`/crm/deals/${deal.id}`} className="nx-link">{deal.title}</Link><p className="text-xs text-text-muted">{deal.clientId ? label(labels.clients, deal.clientId) : "No client linked"}</p></td>
-                  <td><StatusBadge status={deal.stage} /></td>
-                  <td className="whitespace-nowrap text-right font-medium tabular-nums">{formatMajor(deal.expectedValue, deal.currency)}</td>
-                  <td><DepartmentChip name={deal.departmentId ? labels.departments.get(deal.departmentId) : null} /></td>
-                  <td className="text-text-secondary">{label(labels.users, deal.ownerId)}</td>
-                  <td className="whitespace-nowrap text-text-secondary">{formatDate(deal.expectedCloseDate)}</td>
+                  <td data-label="Deal"><Link href={`/crm/deals/${deal.id}`} className="nx-link">{deal.title}</Link><p className="text-xs text-text-muted">{deal.clientId ? label(labels.clients, deal.clientId) : "No client linked"}</p></td>
+                  <td data-label="Stage"><StatusBadge status={deal.stage} /></td>
+                  <td data-label="Value" className="whitespace-nowrap text-right font-medium tabular-nums">{formatMajor(deal.expectedValue, deal.currency)}</td>
+                  <td data-label="Department"><DepartmentChip name={deal.departmentId ? labels.departments.get(deal.departmentId) : null} /></td>
+                  <td data-label="Owner" className="text-text-secondary">{label(labels.users, deal.ownerId)}</td>
+                  <td data-label="Expected close" className="whitespace-nowrap text-text-secondary">{formatDate(deal.expectedCloseDate)}</td>
                 </tr>
               ))}
             </tbody>

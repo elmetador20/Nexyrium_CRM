@@ -6,7 +6,7 @@ export function RecentAuditEvents({ events }: { events: AuditEventSummary[] }) {
       <h2 className="text-lg font-semibold">Audit trail</h2>
       <p className="mt-1 text-sm text-text-muted">Latest 50 events in the selected period · UTC</p>
       {events.length ? (
-        <div className="mt-4 overflow-x-auto">
+        <div role="region" aria-label="Audit trail entries" tabIndex={0} className="mt-4 max-w-full overflow-x-auto">
           <table className="data-table">
             <thead><tr><th>Time</th><th>Action</th><th>Record</th><th>Team member</th><th>Outcome</th></tr></thead>
             <tbody>

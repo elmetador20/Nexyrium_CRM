@@ -61,10 +61,10 @@ function Section({ title, description, children, action }: { title: string; desc
 function ListRow({ href, title, meta, value, badge }: { href: string; title: ReactNode; meta?: ReactNode; value?: ReactNode; badge?: ReactNode }) {
   return (
     <li>
-      <Link href={href} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-surface-hover">
-        <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-text-primary">{title}</span>{meta ? <span className="block truncate text-xs text-text-muted">{meta}</span> : null}</span>
+      <Link href={href} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 sm:flex-nowrap hover:bg-surface-hover">
+        <span className="min-w-0 flex-1 basis-32"><span className="block break-words sm:truncate text-sm font-medium text-text-primary">{title}</span>{meta ? <span className="block truncate text-xs text-text-muted">{meta}</span> : null}</span>
         {badge}
-        {value ? <span className="shrink-0 text-sm font-medium tabular-nums text-text-primary">{value}</span> : null}
+        {value ? <span className="max-w-full break-words text-sm font-medium tabular-nums text-text-primary">{value}</span> : null}
       </Link>
     </li>
   );

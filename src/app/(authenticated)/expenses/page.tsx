@@ -51,17 +51,17 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <EmptyState icon={<ReceiptText className="h-5 w-5" />} title="No expenses found" description="Record an expense to track spending by department." action={can(actor, PERMISSIONS.EXPENSES_CREATE) ? <Link className="button-primary px-4 py-2 text-sm" href="/expenses/new">New expense</Link> : undefined} />
       ) : (
         <TableCard footer={<Pager page={page} pages={Math.ceil(result.total / PAGE_SIZE)} total={result.total} href={link} />}>
-          <table className="data-table">
+          <table className="data-table nx-record-list">
             <thead><tr><th>Date</th><th>Expense</th><th>Category</th><th>Department</th><th>Status</th><th className="text-right">Amount</th></tr></thead>
             <tbody>
               {result.items.map((expense) => (
                 <tr key={expense.id}>
-                  <td className="whitespace-nowrap text-text-secondary">{formatDate(expense.incurredOn)}</td>
-                  <td><Link className="nx-link" href={`/expenses/${expense.id}`}>{expense.description}</Link>{expense.merchantName ? <p className="text-xs text-text-muted">{expense.merchantName}</p> : null}</td>
-                  <td className="text-text-secondary">{expense.category}</td>
-                  <td><DepartmentChip name={expense.departmentId ? labels.departments.get(expense.departmentId) : null} /></td>
-                  <td><StatusBadge status={expense.status} /></td>
-                  <td className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(expense.amountMinor, expense.currencyCode)}</td>
+                  <td data-label="Date" className="whitespace-nowrap text-text-secondary">{formatDate(expense.incurredOn)}</td>
+                  <td data-label="Expense"><Link className="nx-link" href={`/expenses/${expense.id}`}>{expense.description}</Link>{expense.merchantName ? <p className="text-xs text-text-muted">{expense.merchantName}</p> : null}</td>
+                  <td data-label="Category" className="text-text-secondary">{expense.category}</td>
+                  <td data-label="Department"><DepartmentChip name={expense.departmentId ? labels.departments.get(expense.departmentId) : null} /></td>
+                  <td data-label="Status"><StatusBadge status={expense.status} /></td>
+                  <td data-label="Amount" className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(expense.amountMinor, expense.currencyCode)}</td>
                 </tr>
               ))}
             </tbody>

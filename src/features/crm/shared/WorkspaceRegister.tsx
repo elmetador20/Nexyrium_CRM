@@ -58,15 +58,15 @@ export async function WorkspaceRegister({ mode, searchParams }: { mode: "contact
         </FilterBar>
         {rows.length ? (
           <TableCard footer={<Nav page={page} more={rows.length > PAGE_SIZE} link={link} />}>
-            <table className="data-table">
+            <table className="data-table nx-record-list">
               <thead><tr><th>Contact</th><th>Client</th><th>Email</th><th>Phone</th><th>Department</th></tr></thead>
               <tbody>{rows.slice(0, PAGE_SIZE).map((r) => (
                 <tr key={r.id}>
-                  <td><span className="font-medium text-text-primary">{r.name}</span>{r.primary ? <span className="ml-2"><StatusBadge tone="primary">Primary</StatusBadge></span> : null}<p className="text-xs text-text-muted">{r.title || ""}</p></td>
-                  <td><Link className="nx-link" href={"/crm/clients/" + r.clientId}>{r.client}</Link></td>
-                  <td className="text-text-secondary">{r.email ? <a className="hover:text-primary" href={`mailto:${r.email}`}>{r.email}</a> : "—"}</td>
-                  <td className="whitespace-nowrap text-text-secondary">{r.phone ? <a className="hover:text-primary" href={`tel:${r.phone}`}>{r.phone}</a> : "—"}</td>
-                  <td><DepartmentChip name={r.departmentId ? labels.departments.get(r.departmentId) : null} /></td>
+                  <td data-label="Contact"><span className="font-medium text-text-primary">{r.name}</span>{r.primary ? <span className="ml-2"><StatusBadge tone="primary">Primary</StatusBadge></span> : null}<p className="text-xs text-text-muted">{r.title || ""}</p></td>
+                  <td data-label="Client"><Link className="nx-link" href={"/crm/clients/" + r.clientId}>{r.client}</Link></td>
+                  <td data-label="Email" className="text-text-secondary">{r.email ? <a className="hover:text-primary" href={`mailto:${r.email}`}>{r.email}</a> : "—"}</td>
+                  <td data-label="Phone" className="whitespace-nowrap text-text-secondary">{r.phone ? <a className="hover:text-primary" href={`tel:${r.phone}`}>{r.phone}</a> : "—"}</td>
+                  <td data-label="Department"><DepartmentChip name={r.departmentId ? labels.departments.get(r.departmentId) : null} /></td>
                 </tr>
               ))}</tbody>
             </table>
@@ -110,17 +110,17 @@ export async function WorkspaceRegister({ mode, searchParams }: { mode: "contact
       </FilterBar>
       {rows.length ? (
         <TableCard footer={<Nav page={page} more={rows.length > PAGE_SIZE} link={link} />}>
-          <table className="data-table">
+          <table className="data-table nx-record-list">
             <thead><tr><th>Client</th><th>Received</th><th>Method</th><th>Reference</th><th>Department</th><th>Status</th><th className="text-right">Amount</th></tr></thead>
             <tbody>{rows.slice(0, PAGE_SIZE).map((r) => (
               <tr key={r.id}>
-                <td><Link className="nx-link" href={"/crm/clients/" + r.clientId}>{r.client}</Link></td>
-                <td className="whitespace-nowrap text-text-secondary">{formatDate(r.date)}</td>
-                <td className="text-text-secondary">{humanize(r.method)}</td>
-                <td className="text-text-secondary">{r.reference || "—"}</td>
-                <td><DepartmentChip name={r.departmentId ? labels.departments.get(r.departmentId) : null} /></td>
-                <td><StatusBadge status={r.status} /></td>
-                <td className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(r.amount, r.currency)}</td>
+                <td data-label="Client"><Link className="nx-link" href={"/crm/clients/" + r.clientId}>{r.client}</Link></td>
+                <td data-label="Received" className="whitespace-nowrap text-text-secondary">{formatDate(r.date)}</td>
+                <td data-label="Method" className="text-text-secondary">{humanize(r.method)}</td>
+                <td data-label="Reference" className="text-text-secondary">{r.reference || "—"}</td>
+                <td data-label="Department"><DepartmentChip name={r.departmentId ? labels.departments.get(r.departmentId) : null} /></td>
+                <td data-label="Status"><StatusBadge status={r.status} /></td>
+                <td data-label="Amount" className="whitespace-nowrap text-right font-medium tabular-nums">{formatMinor(r.amount, r.currency)}</td>
               </tr>
             ))}</tbody>
           </table>
